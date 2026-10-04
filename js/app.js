@@ -68,7 +68,10 @@ const DOOR_LINE = {
 };
 
 async function renderHub() {
-  const [clues, team] = await Promise.all([store.countClues(), store.teamGoal(TEAM_GOAL_ID)]);
+  const [clues, team, due] = await Promise.all([store.countClues(), store.teamGoal(TEAM_GOAL_ID), store.dueReviews()]);
+  const reviewAlert = due.length ? h('section', { class: 'review-alert' },
+    bubble('kkam', `2주 전에 풀었던 주문, 기억나는지 보는 거지. 복습할 단서 ${due.length}개.`),
+    h('button', { class: 'btn primary wide', onclick: () => guard(() => renderReview(due[0])) }, '복습하기')) : '';
   const tip = h('div', { class: 'scene-tip' }, bubble('kkam', '불 켜진 문을 눌러 보는 거지.'));
   const scene = h('section', { class: 'scene', html: sceneSvg({ kitchen: true, arcade: false, bus: false, basement: false }) });
 
@@ -90,6 +93,7 @@ async function renderHub() {
     h('div', { class: 'hub-layout' },
       scene,
       h('div', { class: 'hub-side' },
+        reviewAlert,
         tip,
         h('section', { class: 'strip' },
           h('div', { class: 'strip-item' },
@@ -167,6 +171,106 @@ async function renderClue(stageMeta, afterResult) {
         h('span', { class: 'stage-step' }, `${stageMeta.week}주차 단서`)),
       note,
       already ? null : form));
+}
+
+// ---------- 복습 퀴즈 (첫 클리어 14일 후) ----------
+// 두 번 안에 맞히면 정답으로 기록하고 경험치, 두 번 다 틀리면 오답으로 기록 (정답은 알려 주지 않음)
+const REVIEW_TRIES = 2;
+
+async function findStageByConcept(conceptId) {
+  for (const s of SEASON1.filter((x) => x.open && x.load)) {
+    const mod = (await s.load()).default;
+    if (mod.conceptId === conceptId) return { meta: s, mod };
+  }
+  return null;
+}
+
+async function renderReview(review) {
+  const found = await findStageByConcept(review.concept_id);
+  const questions = found?.mod.review || [];
+  if (!questions.length) throw new Error('이 복습 문제는 아직 준비 중인 거지. 나중에 다시 오는 거지.');
+  const { meta } = found;
+  const item = questions[Math.floor(Math.random() * questions.length)];
+
+  let tries = 0;
+  let hintStep = 0;
+  let practice = false;
+
+  const talk = h('div', { class: 'talk' }, bubble('kkam', `${meta.week}주차 복습인 거지. 천천히 생각해도 되는 거지.`));
+  const say = (text) => talk.replaceChildren(bubble('kkam', text));
+  const input = h('input', { id: 'review-answer', type: 'text', inputmode: 'numeric', autocomplete: 'off', class: 'review-input' });
+  const hintBtn = h('button', { class: 'btn ghost', type: 'button', disabled: true, onclick: showHint }, '힌트 보기');
+  const sendBtn = h('button', { class: 'btn primary', type: 'submit' }, '정답 확인');
+  const actions = h('div', { class: 'actions' }, hintBtn, sendBtn);
+
+  function showHint() {
+    if (hintStep >= item.hints.length) { say('힌트는 다 말한 거지. 이제 네 차례.'); return; }
+    say(item.hints[hintStep]);
+    hintStep += 1;
+  }
+
+  function endButtons(extra) {
+    input.disabled = true;
+    actions.replaceChildren(
+      extra || '',
+      h('button', { class: 'btn primary', type: 'button', onclick: () => guard(renderHub) }, '휴게소로'));
+  }
+
+  const form = h('form', {
+    class: 'review-form',
+    onsubmit: (e) => {
+      e.preventDefault();
+      guard(async () => {
+        const value = Number(input.value.replace(/[^0-9]/g, ''));
+        if (!input.value.trim() || Number.isNaN(value)) { say('숫자로 적어 주는 거지.'); return; }
+        tries += 1;
+        if (value === item.answer) {
+          if (practice) { say(`푸흡. ${item.answer}${item.unit}, 맞는 거지. 연습이라 경험치는 없는 거지.`); endButtons(); return; }
+          sendBtn.disabled = true;
+          await store.answerReview(review.id, true);
+          const res = await grantXp(store, profile, [{ source: 'review', stageId: meta.id }]);
+          profile = res.profile;
+          say(`푸흡. 기억하고 있는 거지. 경험치 +${res.gained}.${res.levelUp ? ` 레벨 업, Lv.${profile.level}인 거지.` : ''}`);
+          endButtons();
+          return;
+        }
+        const dir = value > item.answer ? '음… 너무 많은 거지.' : '음… 조금 모자란 거지.';
+        if (practice || tries < REVIEW_TRIES) {
+          hintBtn.disabled = false;
+          say(`${dir} 한 번 더. 힌트를 봐도 괜찮은 거지.`);
+          input.select();
+          return;
+        }
+        sendBtn.disabled = true;
+        await store.answerReview(review.id, false);
+        say(`${dir} 괜찮은 거지. 복습은 잊은 걸 다시 꺼내 보는 연습인 거지.`);
+        endButtons(h('button', {
+          class: 'btn ghost', type: 'button',
+          onclick: () => {
+            practice = true; tries = 0; input.disabled = false; input.value = '';
+            hintBtn.disabled = false;
+            actions.replaceChildren(hintBtn, sendBtn); sendBtn.disabled = false;
+            say('연습으로 한 번 더 푸는 거지.'); input.focus();
+          },
+        }, '연습으로 다시 풀기'));
+      });
+    },
+  },
+  h('p', { class: 'ask' }, item.q),
+  h('label', { for: 'review-answer', class: 'review-label' }, h('span', {}, '답'), input, h('span', {}, item.unit)),
+  actions);
+
+  root.replaceChildren(
+    statusBar(),
+    h('div', { class: 'stage-holder' },
+      h('section', { class: 'stage' },
+        h('header', { class: 'stage-head' },
+          h('button', { class: 'link', onclick: () => guard(renderHub) }, '휴게소로'),
+          h('span', { class: 'stage-step' }, '복습 퀴즈')),
+        h('h2', {}, `${meta.week}주차 복습: ${meta.subject}`),
+        talk,
+        form)));
+  input.focus();
 }
 
 // ---------- 스테이지 실행 ----------

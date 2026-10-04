@@ -38,6 +38,7 @@ export default {
   id: 's1-wNN',                 // stages/index.js와 같게
   conceptId: 'math-xxx-01',     // 복습 퀴즈용 개념 ID
   clue: { id: 's1-wNN', answer: '영상 암호', ask: '질문 문구' },
+  review: [{ q: '문제', answer: 48, unit: '개', hints: ['개념', '구체적 쪼개기'] }],  // 2주 후 복습 문제 (숫자 답, 하나를 골라 출제)
   mount(root, { finish, exit }) {
     // 게임 진행 후 finish({ attempts, hints, bonus }) 호출
     // attempts: 제출 횟수 합계, hints: 본 라운드 힌트 사용 수, bonus: 숨은 주문 성공 여부
@@ -66,7 +67,7 @@ export default {
 - `progress`: 첫 클리어 시 재시도 수, 힌트 수
 - `xp_log`: 모든 XP 획득 내역
 - `clues`: 영상 단서 입력 = 영상 시청 확인
-- `review_quiz`: 첫 클리어 14일 후 복습 예약 (출제 UI는 아직 없음)
+- `review_quiz`: 첫 클리어 14일 후 복습 예약. 허브 알림 → 복습 퀴즈 화면에서 출제, 두 번 안에 맞히면 `correct=true` + 40XP, 두 번 다 틀리면 `correct=false` (정답은 알려 주지 않고, XP 없는 연습 풀이만 허용)
 - `learning_summary` 뷰: 아이별 요약
 - 대표님 수기 기록: "아들이 먼저 꺼낸 질문" → `admin_notes` (대시보드 메모, 관리자만 읽기·쓰기)
 
@@ -112,7 +113,7 @@ export default {
 
 ## 다음 작업 (우선순위)
 1. ~~대표님용 학습 대시보드 (`admin.html`)~~ 완료. 메모는 `admin_notes` 테이블 (`supabase/04_admin_notes.sql`).
-2. 복습 퀴즈 출제 화면: 허브에 "복습할 단서" 알림, `review_quiz.due_at` 지난 항목 출제, 정답 시 40XP.
+2. ~~복습 퀴즈 출제 화면~~ 완료 (`js/app.js`의 `renderReview`, 문제는 각 스테이지 파일의 `review`).
 3. 2주차 스테이지 `s1-w02.js`.
 4. 레벨업 공간 해금 (`scene.js`의 open 상태를 레벨·주차에 연동).
 
