@@ -69,13 +69,9 @@ async function renderSummary(profile) {
       h('thead', {}, h('tr', {}, ...head.map((t) => h('th', { scope: 'col' }, t)))),
       h('tbody', {}, ...kids.map((k) => h('tr', {},
         h('th', { scope: 'row' }, h('button', { class: 'link', onclick: () => guard(() => renderChild(profile, k)) }, k.nickname)),
-        h('td', {}, `Lv.${dash(k.level)}`),
-        h('td', {}, dash(k.xp)),
-        h('td', {}, dash(k.stages_cleared)),
-        h('td', {}, dash(k.avg_attempts)),
-        h('td', {}, dash(k.avg_hints)),
-        h('td', {}, k.review_rate_pct == null ? '–' : `${k.review_rate_pct}%`),
-        h('td', {}, dash(k.clues)))))))
+        ...[`Lv.${dash(k.level)}`, dash(k.xp), dash(k.stages_cleared), dash(k.avg_attempts), dash(k.avg_hints),
+          k.review_rate_pct == null ? '–' : `${k.review_rate_pct}%`, dash(k.clues)]
+          .map((v, i) => h('td', { 'data-label': head[i + 1] }, v)))))))
     : h('p', { class: 'muted' }, '아직 아이 계정이 없어요. Supabase에서 아이디를 발급하면 여기에 나타나요.');
 
   root.replaceChildren(
@@ -163,11 +159,14 @@ async function renderChild(profile, kid) {
     h('section', { class: 'strip' },
       ...[['레벨', `Lv.${dash(kid.level)}`], ['XP', dash(kid.xp)], ['클리어', dash(kid.stages_cleared)], ['단서', dash(kid.clues)]]
         .map(([label, value]) => h('div', { class: 'strip-item grow' }, h('span', { class: 'strip-label' }, label), h('strong', {}, value)))),
-    section('수기 메모', h('div', {}, form, noteList)),
-    section('주차별 기록', stages),
-    section('영상 단서', clues),
-    section('복습 퀴즈', reviews),
-    section('최근 XP (20개)', xp));
+    // 태블릿·PC에서는 메모(왼쪽)와 기록(오른쪽) 두 칸, 휴대폰에서는 한 줄로 쌓임
+    h('div', { class: 'admin-detail' },
+      h('div', { class: 'admin-col admin-col-notes' }, section('수기 메모', h('div', {}, form, noteList))),
+      h('div', { class: 'admin-col' },
+        section('주차별 기록', stages),
+        section('영상 단서', clues),
+        section('복습 퀴즈', reviews),
+        section('최근 XP (20개)', xp))));
 }
 
 // ---------- 시작 ----------
