@@ -171,6 +171,30 @@ input {
 .xp-list strong { color: var(--sodium); }
 .clue-form { display: grid; gap: 8px; }
 
+/* ---------- 대표님용 대시보드 (admin.html) ---------- */
+#app.admin { max-width: 960px; }
+.admin-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+.admin-top h1 { margin: 0; font-size: 26px; }
+.admin-top-right { display: flex; gap: 14px; align-items: center; }
+.admin-top-right .link { min-height: 44px; }
+.admin .panel + .panel, .admin .strip + .panel { margin-top: 12px; }
+.table-wrap { overflow-x: auto; margin-top: 10px; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 16px; white-space: nowrap; }
+.admin-table th, .admin-table td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--night); }
+.admin-table th:first-child { text-align: left; }
+.admin-table thead th { font-size: 14px; color: var(--dim); font-weight: 700; }
+.admin-table .link { color: var(--sodium); font-weight: 700; min-height: 44px; }
+.admin-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.admin-list li { display: grid; gap: 2px; padding: 10px 14px; border-radius: 12px; background: var(--deep); }
+.note-form { display: grid; gap: 6px; margin-bottom: 12px; }
+.note-form label { font-weight: 700; font-size: 16px; }
+textarea {
+  font: inherit; padding: 12px 14px; border-radius: 12px; border: 2px solid var(--dim);
+  background: var(--paper); color: var(--ink); width: 100%; resize: vertical;
+}
+.note-body { white-space: pre-wrap; }
+.note-form .actions { margin-top: 0; }
+
 @media (max-width: 380px) {
   body { font-size: 17px; }
   .order { grid-template-columns: 1fr; }

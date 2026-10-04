@@ -10,7 +10,7 @@
 
 ## 2. 실제 저장 켜기 (Supabase)
 1. supabase.com → New project (Region: Seoul).
-2. SQL Editor에서 `supabase/01_schema.sql` 실행 → 이어서 `supabase/02_setup.sql` → `supabase/03_protect_summary.sql` 순서로 실행.
+2. SQL Editor에서 `supabase/01_schema.sql` 실행 → 이어서 `supabase/02_setup.sql` → `supabase/03_protect_summary.sql` → `supabase/04_admin_notes.sql` 순서로 실행.
 3. Authentication → Sign In / Providers → Email → **Confirm email 끄기**.
 4. Project Settings → API에서 Project URL과 anon public key 복사.
 5. `js/config.js`의 `SUPABASE_URL`, `SUPABASE_ANON_KEY`에 붙여넣고 저장소에 반영.
@@ -31,6 +31,10 @@
 1주차 암호는 `빠른덧셈`입니다 (띄어쓰기 무시). 영상 대본에 이 암호가 나오도록 맞춥니다.
 바꾸려면 `js/stages/s1-w01.js`의 `clue.answer`를 수정합니다.
 
-## 6. Claude Code로 이어서 작업
+## 6. 학습 대시보드
+사이트 주소 뒤에 `admin.html`을 붙여 접속합니다 (예: `https://acquired-lefty.github.io/hyugeso/admin.html`).
+관리자(`is_admin`) 계정만 들어갈 수 있고, 게임 화면 상단의 "대시보드" 링크도 관리자에게만 보입니다.
+
+## 7. Claude Code로 이어서 작업
 저장소를 Claude Code에서 열면 `CLAUDE.md`를 읽고 맥락을 이어받습니다.
-첫 요청 예시: "CLAUDE.md의 다음 작업 1번, 학습 대시보드를 만들어 줘."
+첫 요청 예시: "CLAUDE.md의 다음 작업 2번, 복습 퀴즈 화면을 만들어 줘."

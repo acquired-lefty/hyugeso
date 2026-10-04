@@ -26,6 +26,7 @@ js/characters.js      캐릭터 SVG, 이름, 웃음소리
 js/ui.js              h() 요소 생성, bubble() 말풍선, josa(), normalize()
 js/scene.js           휴게소 허브 장면 SVG
 js/app.js             로그인, 허브, 부엌 목록, 스테이지 실행, 결과, 단서 입력
+admin.html, js/admin.js  대표님용 학습 대시보드 (아이별 요약·상세·수기 메모)
 js/stages/index.js    시즌1 주차 목록 (open 플래그로 공개 관리)
 js/stages/s1-wNN.js   주차별 스테이지
 supabase/             DB 설정 SQL
@@ -67,7 +68,7 @@ export default {
 - `clues`: 영상 단서 입력 = 영상 시청 확인
 - `review_quiz`: 첫 클리어 14일 후 복습 예약 (출제 UI는 아직 없음)
 - `learning_summary` 뷰: 아이별 요약
-- 대표님 수기 기록: "아들이 먼저 꺼낸 질문" (대시보드에 메모 입력란 추가 예정)
+- 대표님 수기 기록: "아들이 먼저 꺼낸 질문" → `admin_notes` (대시보드 메모, 관리자만 읽기·쓰기)
 
 ## 개인정보·안전 원칙 (변경 금지)
 - 아이 정보는 닉네임(영문 아이디)만. 실명·학교·연락처·사진 수집 금지.
@@ -110,7 +111,7 @@ export default {
 | 12 | 피날레: 잠긴 방 열기 | 통합 복습 | 최종 방탈출, 지하 해금 |
 
 ## 다음 작업 (우선순위)
-1. 대표님용 학습 대시보드 (`admin.html`): `learning_summary` + 아이별 상세 + 수기 메모. `is_admin` 계정만 접근.
+1. ~~대표님용 학습 대시보드 (`admin.html`)~~ 완료. 메모는 `admin_notes` 테이블 (`supabase/04_admin_notes.sql`).
 2. 복습 퀴즈 출제 화면: 허브에 "복습할 단서" 알림, `review_quiz.due_at` 지난 항목 출제, 정답 시 40XP.
 3. 2주차 스테이지 `s1-w02.js`.
 4. 레벨업 공간 해금 (`scene.js`의 open 상태를 레벨·주차에 연동).
