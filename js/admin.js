@@ -76,7 +76,8 @@ async function renderSummary(profile) {
 
   root.replaceChildren(
     topBar(profile),
-    store.isDemo ? h('p', { class: 'demo-note' }, '체험 모드: 이 기기에 저장된 기록만 보여요.') : null,
+    // replaceChildren은 null을 "null" 글자로 표시하므로 빈 문자열 사용
+    store.isDemo ? h('p', { class: 'demo-note' }, '체험 모드: 이 기기에 저장된 기록만 보여요.') : '',
     h('section', { class: 'panel' },
       h('h2', {}, '아이별 요약'),
       h('p', { class: 'small muted' }, '아이디를 누르면 상세 기록과 메모를 볼 수 있어요. 평균은 첫 클리어 기준이에요.'),

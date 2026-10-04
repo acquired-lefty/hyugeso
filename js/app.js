@@ -85,7 +85,8 @@ async function renderHub() {
   const teamPct = team ? Math.round((team.current / team.target) * 100) : 0;
   root.replaceChildren(
     statusBar(),
-    store.isDemo ? h('p', { class: 'demo-note' }, '체험 모드: 기록이 이 기기에만 저장돼요.') : null,
+    // replaceChildren은 null을 "null" 글자로 표시하므로 빈 문자열 사용
+    store.isDemo ? h('p', { class: 'demo-note' }, '체험 모드: 기록이 이 기기에만 저장돼요.') : '',
     h('div', { class: 'hub-layout' },
       scene,
       h('div', { class: 'hub-side' },
