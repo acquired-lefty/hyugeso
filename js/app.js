@@ -86,16 +86,18 @@ async function renderHub() {
   root.replaceChildren(
     statusBar(),
     store.isDemo ? h('p', { class: 'demo-note' }, '체험 모드: 기록이 이 기기에만 저장돼요.') : null,
-    scene,
-    tip,
-    h('section', { class: 'strip' },
-      h('div', { class: 'strip-item' },
-        h('span', { class: 'strip-label' }, '단서 도감'),
-        h('strong', {}, `${clues} / ${CLUE_TOTAL}`)),
-      team ? h('div', { class: 'strip-item grow' },
-        h('span', { class: 'strip-label' }, `${team.title}, 친구들과 함께`),
-        h('div', { class: 'teambar' }, h('span', { style: `width:${teamPct}%` })),
-        h('span', { class: 'small muted' }, `${team.current} / ${team.target}`)) : null));
+    h('div', { class: 'hub-layout' },
+      scene,
+      h('div', { class: 'hub-side' },
+        tip,
+        h('section', { class: 'strip' },
+          h('div', { class: 'strip-item' },
+            h('span', { class: 'strip-label' }, '단서 도감'),
+            h('strong', {}, `${clues} / ${CLUE_TOTAL}`)),
+          team ? h('div', { class: 'strip-item grow' },
+            h('span', { class: 'strip-label' }, `${team.title}, 친구들과 함께`),
+            h('div', { class: 'teambar' }, h('span', { style: `width:${teamPct}%` })),
+            h('span', { class: 'small muted' }, `${team.current} / ${team.target}`)) : null))));
 }
 
 // ---------- 부엌 (주차 목록) ----------
@@ -158,7 +160,7 @@ async function renderClue(stageMeta, afterResult) {
 
   root.replaceChildren(
     statusBar(),
-    h('section', { class: 'panel' },
+    h('section', { class: 'panel clue-panel' },
       h('header', { class: 'stage-head' },
         h('button', { class: 'link', onclick: () => guard(afterResult ? renderHub : renderKitchen) }, afterResult ? '휴게소로' : '부엌으로'),
         h('span', { class: 'stage-step' }, `${stageMeta.week}주차 단서`)),
