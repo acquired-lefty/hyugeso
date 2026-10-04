@@ -171,6 +171,12 @@ input {
 .xp-list strong { color: var(--sodium); }
 .clue-form { display: grid; gap: 8px; }
 
+/* ---------- 복습 퀴즈 ---------- */
+.review-alert { background: #3A3320; border: 2px solid var(--sodium); border-radius: 18px; padding: 4px 14px 14px; margin: 12px 0; }
+.review-form { display: grid; gap: 8px; }
+.review-label { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.review-input { flex: 1; max-width: 200px; font-family: var(--serif); font-size: 28px; text-align: right; border-color: var(--kraft); }
+
 /* ---------- 대표님용 대시보드 (admin.html) ---------- */
 .admin-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
 .admin-top h1 { margin: 0; font-size: 26px; }

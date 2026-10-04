@@ -169,7 +169,38 @@ export const store = {
       check(error);
       return;
     }
-    const db = readDemo(); db.reviews.push({ concept_id: conceptId, due_at: due }); writeDemo(db);
+    const db = readDemo(); db.reviews.push({ id: Date.now(), concept_id: conceptId, due_at: due }); writeDemo(db);
+  },
+
+  // 복습할 때가 된(예정일이 지났고 아직 안 푼) 복습 퀴즈
+  async dueReviews() {
+    const now = new Date().toISOString();
+    if (live) {
+      const { data, error } = await sb.from('review_quiz').select('*')
+        .eq('user_id', userId).is('answered_at', null).lte('due_at', now).order('due_at');
+      check(error);
+      return data || [];
+    }
+    const db = readDemo();
+    // 예전 체험 기록에는 id가 없을 수 있어 순서 번호로 채움
+    (db.reviews || []).forEach((r, i) => { if (r.id == null) r.id = i + 1; });
+    writeDemo(db);
+    return (db.reviews || []).filter((r) => !r.answered_at && r.due_at <= now)
+      .sort((a, b) => a.due_at.localeCompare(b.due_at));
+  },
+
+  async answerReview(reviewId, correct) {
+    const answered_at = new Date().toISOString();
+    if (live) {
+      const { error } = await sb.from('review_quiz').update({ correct, answered_at })
+        .eq('id', reviewId).eq('user_id', userId).is('answered_at', null);
+      check(error);
+      return;
+    }
+    const db = readDemo();
+    const r = (db.reviews || []).find((x) => x.id === reviewId);
+    if (r && !r.answered_at) Object.assign(r, { correct, answered_at });
+    writeDemo(db);
   },
 
   async teamGoal(goalId) {
