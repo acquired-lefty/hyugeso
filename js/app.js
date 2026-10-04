@@ -53,7 +53,8 @@ function statusBar() {
     h('div', { class: 'who' },
       h('strong', {}, profile.nickname),
       h('span', { class: 'lv' }, `Lv.${profile.level}`),
-      h('span', { class: 'title-badge' }, profile.title)),
+      h('span', { class: 'title-badge' }, profile.title),
+      profile.is_admin ? h('a', { class: 'link small', href: 'admin.html' }, '대시보드') : null),
     h('div', { class: 'xpbar', role: 'progressbar', 'aria-valuenow': pct, 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-label': '다음 레벨까지' },
       h('span', { style: `width:${pct}%` })),
     h('button', { class: 'link small', onclick: async () => { await store.logout(); profile = null; renderLogin(); } }, '나가기'));

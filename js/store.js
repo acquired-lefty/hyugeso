@@ -192,4 +192,90 @@ export const store = {
     g.current = Math.min(g.current + 1, g.target);
     db.team[goalId] = g; writeDemo(db);
   },
+
+  // ---------- 대표님용 대시보드 (실제 모드는 RLS가 관리자에게만 전체 기록을 열어 줌) ----------
+
+  // 아이별 요약: learning_summary 뷰 + 아이디 + 단서 수
+  async adminChildren() {
+    if (live) {
+      const [sum, prof, clue] = await Promise.all([
+        sb.from('learning_summary').select('*'),
+        sb.from('profiles').select('id, nickname, is_admin'),
+        sb.from('clues').select('user_id'),
+      ]);
+      check(sum.error); check(prof.error); check(clue.error);
+      const byNick = Object.fromEntries((sum.data || []).map((r) => [r.nickname, r]));
+      const clueCount = {};
+      for (const c of clue.data || []) clueCount[c.user_id] = (clueCount[c.user_id] || 0) + 1;
+      return (prof.data || [])
+        .filter((p) => !p.is_admin)
+        .map((p) => ({ ...byNick[p.nickname], id: p.id, nickname: p.nickname, clues: clueCount[p.id] || 0 }))
+        .sort((a, b) => a.nickname.localeCompare(b.nickname));
+    }
+    const db = readDemo();
+    if (!db.profile) return [];
+    const rows = Object.values(db.progress || {}).filter((r) => r.cleared);
+    const avg = (key) => (rows.length ? Math.round((rows.reduce((s, r) => s + (r[key] || 0), 0) / rows.length) * 10) / 10 : null);
+    const answered = (db.reviews || []).filter((r) => r.answered_at);
+    return [{
+      id: db.profile.id, nickname: db.profile.nickname, level: db.profile.level, xp: db.profile.xp,
+      stages_cleared: rows.length, avg_attempts: avg('attempts'), avg_hints: avg('hints_used'),
+      review_rate_pct: answered.length ? Math.round((100 * answered.filter((r) => r.correct).length) / answered.length) : null,
+      clues: Object.keys(db.clues || {}).length,
+    }];
+  },
+
+  // 아이 한 명의 상세 기록
+  async adminDetail(childId) {
+    if (live) {
+      const [progress, clues, xpLog, reviews] = await Promise.all([
+        sb.from('progress').select('*').eq('user_id', childId).order('stage_id'),
+        sb.from('clues').select('*').eq('user_id', childId).order('collected_at'),
+        sb.from('xp_log').select('*').eq('user_id', childId).order('created_at', { ascending: false }).limit(20),
+        sb.from('review_quiz').select('*').eq('user_id', childId).order('due_at'),
+      ]);
+      for (const r of [progress, clues, xpLog, reviews]) check(r.error);
+      return { progress: progress.data || [], clues: clues.data || [], xpLog: xpLog.data || [], reviews: reviews.data || [] };
+    }
+    const db = readDemo();
+    return {
+      progress: Object.values(db.progress || {}).sort((a, b) => a.stage_id.localeCompare(b.stage_id)),
+      clues: Object.entries(db.clues || {}).map(([clue_id, collected_at]) => ({ clue_id, collected_at })),
+      xpLog: [...(db.xpLog || [])].reverse().slice(0, 20),
+      reviews: [...(db.reviews || [])].sort((a, b) => a.due_at.localeCompare(b.due_at)),
+    };
+  },
+
+  async listNotes(childId) {
+    if (live) {
+      const { data, error } = await sb.from('admin_notes').select('*')
+        .eq('user_id', childId).order('created_at', { ascending: false });
+      check(error, '메모를 불러오지 못했어요. 04_admin_notes.sql을 실행했는지 확인해 주세요.');
+      return data || [];
+    }
+    return (readDemo().notes || []).filter((n) => n.user_id === childId).reverse();
+  },
+
+  async addNote(childId, body) {
+    if (live) {
+      const { error } = await sb.from('admin_notes').insert({ user_id: childId, body });
+      check(error, '메모를 저장하지 못했어요.');
+      return;
+    }
+    const db = readDemo();
+    db.notes = db.notes || [];
+    db.notes.push({ id: Date.now(), user_id: childId, body, created_at: new Date().toISOString() });
+    writeDemo(db);
+  },
+
+  async deleteNote(noteId) {
+    if (live) {
+      const { error } = await sb.from('admin_notes').delete().eq('id', noteId);
+      check(error, '메모를 지우지 못했어요.');
+      return;
+    }
+    const db = readDemo();
+    db.notes = (db.notes || []).filter((n) => n.id !== noteId);
+    writeDemo(db);
+  },
 };
