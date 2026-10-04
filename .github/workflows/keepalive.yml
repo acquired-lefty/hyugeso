@@ -1,0 +1,20 @@
+# 저장 위치: 저장소 안 .github/workflows/keepalive.yml
+# 역할: 3일마다 Supabase에 신호를 보내 7일 무활동 자동 정지를 막음
+# 필요: 저장소 Settings > Secrets and variables > Actions 에
+#       SUPABASE_URL, SUPABASE_ANON_KEY 두 개 등록
+
+name: Supabase Keepalive
+on:
+  schedule:
+    - cron: "0 0 */3 * *"   # 3일마다 오전 9시(한국시간)
+  workflow_dispatch:         # 수동 실행 버튼
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping heartbeat table
+        run: |
+          curl -sf "${{ secrets.SUPABASE_URL }}/rest/v1/heartbeat?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
