@@ -10,7 +10,7 @@
 
 ## 2. 실제 저장 켜기 (Supabase)
 1. supabase.com → New project (Region: Seoul).
-2. SQL Editor에서 `supabase/01_schema.sql` 실행 → 이어서 `supabase/02_setup.sql` 실행.
+2. SQL Editor에서 `supabase/01_schema.sql` 실행 → 이어서 `supabase/02_setup.sql` → `supabase/03_protect_summary.sql` 순서로 실행.
 3. Authentication → Sign In / Providers → Email → **Confirm email 끄기**.
 4. Project Settings → API에서 Project URL과 anon public key 복사.
 5. `js/config.js`의 `SUPABASE_URL`, `SUPABASE_ANON_KEY`에 붙여넣고 저장소에 반영.
