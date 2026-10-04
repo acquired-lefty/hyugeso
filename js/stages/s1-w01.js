@@ -32,7 +32,7 @@ const BONUS = {
 export default {
   id: 's1-w01',
   conceptId: 'math-mul-01',
-  clue: { id: 's1-w01', answer: '빠른덧셈', ask: '영상에서 깜빡이가 알려 준 창고 암호는?' },
+  clue: { id: 's1-w01', answer: '빠른덧셈', ask: '영상에서 규리사가 알려 준 창고 암호는?' },
 
   mount(root, { finish, exit }) {
     const stats = { attempts: 0, hints: 0, bonus: false };

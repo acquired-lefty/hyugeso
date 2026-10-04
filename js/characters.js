@@ -30,7 +30,7 @@ const INNER = {
     <rect x="24" y="83" width="32" height="6" fill="#0F1630"/>`,
 };
 
-export const CHAR_NAME = { kkam: '깜빡이', tipo: '티포', ddal: '딸깍이' };
+export const CHAR_NAME = { kkam: '규리사', tipo: '티포', ddal: '자판남' };
 
 // 각 캐릭터의 웃음소리 (대본·게임 공통)
 export const LAUGH = { kkam: '푸흡.', tipo: '쉬이익— not bad.', ddal: '딸깍, 딸깍. 정확합니다만.' };
