@@ -78,7 +78,7 @@ export default {
   id: 's1-w02',
   conceptId: 'sci-state-01',
   review: REVIEW,
-  clue: { id: 's1-w02', answer: '얼음', ask: '영상에서 알려 준 냉동고 암호는?' },
+  clue: { id: 's1-w02', answer: '자리차지', ask: '영상에서 알려 준 이번 주 암호는?' },
 
   mount(root, { finish, exit }) {
     const stats = { attempts: 0, hints: 0, bonus: false };
