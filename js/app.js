@@ -138,8 +138,12 @@ async function renderKitchen() {
 async function renderClue(stageMeta, afterResult) {
   const mod = (await stageMeta.load()).default;
   const already = await store.hasClue(mod.clue.id);
+  const backLabel = afterResult ? '휴게소로' : '부엌으로';
+  const goBack = () => guard(afterResult ? renderHub : renderKitchen);
   const input = h('input', { id: 'clue', autocomplete: 'off' });
   const note = h('div', { class: 'talk' }, bubble('kkam', already ? '이 단서는 이미 도감에 있는 거지.' : mod.clue.ask));
+  const submitBtn = h('button', { class: 'btn primary', type: 'submit' }, '확인');
+  let bar = statusBar();
 
   const form = h('form', {
     class: 'clue-form',
@@ -149,28 +153,36 @@ async function renderClue(stageMeta, afterResult) {
         note.replaceChildren(bubble('kkam', '음… 그 암호는 아닌 거지. 영상을 다시 보고 와도 되는 거지.'));
         return;
       }
+      submitBtn.disabled = true;
       const isNew = await store.addClue(mod.clue.id);
       if (isNew) {
         const res = await grantXp(store, profile, [{ source: 'clue', stageId: stageMeta.id }]);
         profile = res.profile;
         note.replaceChildren(bubble('kkam', `푸흡. 단서 카드 획득. 경험치 +${res.gained}인 거지.`));
+        const fresh = statusBar(); bar.replaceWith(fresh); bar = fresh;
       } else {
         note.replaceChildren(bubble('kkam', '이미 가진 단서인 거지.'));
       }
+      // 맞힌 뒤에는 확인 버튼을 다음 화면으로 가는 버튼으로 바꿈
       input.disabled = true;
+      const next = h('button', { class: 'btn primary', type: 'button', onclick: goBack }, backLabel);
+      submitBtn.replaceWith(next);
+      next.focus();
     },
   },
   h('label', { for: 'clue' }, '영상 암호'), input,
-  h('button', { class: 'btn primary', type: 'submit', disabled: already }, '확인'));
+  submitBtn);
 
   root.replaceChildren(
-    statusBar(),
+    bar,
     h('section', { class: 'panel clue-panel' },
       h('header', { class: 'stage-head' },
-        h('button', { class: 'link', onclick: () => guard(afterResult ? renderHub : renderKitchen) }, afterResult ? '휴게소로' : '부엌으로'),
+        h('button', { class: 'link', onclick: goBack }, backLabel),
         h('span', { class: 'stage-step' }, `${stageMeta.week}주차 단서`)),
       note,
-      already ? null : form));
+      already
+        ? h('div', { class: 'actions' }, h('button', { class: 'btn primary', onclick: goBack }, backLabel))
+        : form));
 }
 
 // ---------- 복습 퀴즈 (첫 클리어 14일 후) ----------
