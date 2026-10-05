@@ -192,6 +192,23 @@ input {
 .bin-liquid { background: #E4F6F2; }
 .bin-gas { background: #E6EBF8; }
 
+.pick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pick-btn {
+  font: inherit; font-weight: 700; min-height: 56px; padding: 8px; border-radius: 12px; cursor: pointer;
+  background: #fff; color: var(--ink); border: 2px solid #E6DCC6;
+}
+.pick-btn[aria-pressed="true"] { background: #F3E6C8; border-color: var(--ink); }
+.pick-btn[aria-pressed="true"]::before { content: '✓ '; }
+.choice-list { display: grid; gap: 8px; }
+.choice-btn {
+  font: inherit; font-weight: 700; min-height: 56px; padding: 8px 14px; border-radius: 12px; cursor: pointer; text-align: left;
+  background: #fff; color: var(--ink); border: 2px solid #E6DCC6;
+}
+.choice-btn:hover:not(:disabled) { border-color: var(--kraft); }
+.pick-btn:disabled, .choice-btn:disabled { cursor: default; }
+.exp-figure { display: flex; justify-content: center; margin: 4px 0; }
+.exp-art { width: 100%; max-width: 280px; height: auto; }
+
 /* ---------- 복습 퀴즈 ---------- */
 .review-alert { background: #3A3320; border: 2px solid var(--sodium); border-radius: 18px; padding: 4px 14px 14px; margin: 12px 0; }
 .review-form { display: grid; gap: 8px; }
@@ -241,6 +258,7 @@ textarea {
   .login-panel, .clue-panel { max-width: 520px; margin-left: auto; margin-right: auto; }
   .weeks { grid-template-columns: 1fr 1fr; }
   .sort-list { grid-template-columns: 1fr 1fr; }
+  .pick-grid { grid-template-columns: repeat(4, 1fr); }
   .bubble-face { flex-basis: 64px; }
   .bubble-face .char { width: 64px; height: 80px; }
   .box { min-height: 120px; }
