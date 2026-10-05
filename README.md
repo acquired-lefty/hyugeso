@@ -28,8 +28,8 @@
 3. Actions 탭 → Supabase Keepalive → Run workflow로 한 번 실행해 성공 확인.
 
 ## 5. 영상 암호 맞추기
-1주차 암호는 `빠른덧셈`입니다 (띄어쓰기 무시). 영상 대본에 이 암호가 나오도록 맞춥니다.
-바꾸려면 `js/stages/s1-w01.js`의 `clue.answer`를 수정합니다.
+주차별 암호 (띄어쓰기 무시): 1주차 `빠른덧셈`, 2주차 `자리차지`. 영상 대본에 이 암호가 나오도록 맞춥니다.
+바꾸려면 `js/stages/s1-wNN.js`의 `clue.answer`를 수정합니다.
 
 ## 6. 학습 대시보드
 사이트 주소 뒤에 `admin.html`을 붙여 접속합니다 (예: `https://acquired-lefty.github.io/hyugeso/admin.html`).
@@ -37,4 +37,4 @@
 
 ## 7. Claude Code로 이어서 작업
 저장소를 Claude Code에서 열면 `CLAUDE.md`를 읽고 맥락을 이어받습니다.
-첫 요청 예시: "CLAUDE.md의 다음 작업 3번, 2주차 스테이지를 만들어 줘."
+첫 요청 예시: "3주차 암호는 ○○야. 3주차 스테이지를 만들어 줘."

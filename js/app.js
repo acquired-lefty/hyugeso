@@ -160,7 +160,7 @@ async function renderClue(stageMeta, afterResult) {
       input.disabled = true;
     },
   },
-  h('label', { for: 'clue' }, '창고 암호'), input,
+  h('label', { for: 'clue' }, '영상 암호'), input,
   h('button', { class: 'btn primary', type: 'submit', disabled: already }, '확인'));
 
   root.replaceChildren(
@@ -320,7 +320,7 @@ async function completeStage(meta, mod, result) {
           h('li', {}, h('span', {}, XP_LABEL[r.source]), h('strong', {}, `+${r.amount}`))))
         : bubble('kkam', '다시 해 본 거지. 경험치는 처음 한 번만 주는 거지. 그래도 연습은 남는 거지.'),
       teamHelped ? h('p', { class: 'small muted' }, '부엌 공동 목표가 한 칸 찼어요.') : null,
-      bubble('kkam', '영상에서 창고 암호를 찾았다면 입력해 보는 거지.'),
+      bubble('kkam', '영상에서 암호를 찾았다면 입력해 보는 거지.'),
       h('div', { class: 'actions' },
         h('button', { class: 'btn ghost', onclick: () => guard(renderHub) }, '휴게소로'),
         h('button', { class: 'btn primary', onclick: () => guard(() => renderClue(meta, true)) }, '암호 입력'))));
