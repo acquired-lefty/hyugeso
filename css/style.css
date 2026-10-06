@@ -171,6 +171,19 @@ input {
 .xp-list strong { color: var(--sodium); }
 .clue-form { display: grid; gap: 8px; }
 
+/* ---------- 단서 도감 · 공동 목표 칭호 ---------- */
+.strip-link { font: inherit; color: inherit; text-align: left; cursor: pointer; border: 2px solid transparent; min-height: 44px; }
+.strip-link:hover { border-color: var(--sodium); }
+.strip-link .strip-label { text-decoration: underline; }
+.team-badge { background: var(--neon); color: var(--ink); }
+.clue-grid { list-style: none; padding: 0; margin: 14px 0 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.clue-card { display: grid; gap: 2px; padding: 12px; border-radius: 14px; background: var(--deep); border: 2px dashed var(--dim); min-height: 96px; }
+.clue-card.is-got { background: #3A3320; border: 2px solid var(--sodium); }
+.clue-week { font-family: var(--serif); font-weight: 700; color: var(--dim); font-size: 15px; }
+.clue-card.is-got .clue-week { color: var(--sodium); }
+.clue-word { font-family: var(--serif); font-size: 22px; word-break: keep-all; }
+.admin-backup { margin-top: 12px; }
+
 /* ---------- 2주차: 고체·액체·기체 나누기 ---------- */
 .sort-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
 .sort-item { display: grid; gap: 8px; padding: 10px 12px; border-radius: 12px; background: #fff; border: 2px solid #E6DCC6; }
@@ -259,6 +272,7 @@ textarea {
   .weeks { grid-template-columns: 1fr 1fr; }
   .sort-list { grid-template-columns: 1fr 1fr; }
   .pick-grid { grid-template-columns: repeat(4, 1fr); }
+  .clue-grid { grid-template-columns: repeat(3, 1fr); }
   .bubble-face { flex-basis: 64px; }
   .bubble-face .char { width: 64px; height: 80px; }
   .box { min-height: 120px; }
@@ -272,6 +286,7 @@ textarea {
   .hub-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr); gap: 24px; align-items: start; }
   .hub-side .strip { flex-direction: column; }
   .weeks { grid-template-columns: repeat(3, 1fr); }
+  .clue-grid { grid-template-columns: repeat(4, 1fr); }
   .stage-holder, .result, .clue-panel { max-width: 820px; margin-left: auto; margin-right: auto; }
   .stage { padding: 24px; }
   .result { width: 100%; }
