@@ -1,11 +1,12 @@
 import { store } from './store.js';
 import { h, bubble, normalize } from './ui.js';
 import { sceneSvg } from './scene.js';
-import { grantXp, levelProgress, XP_LABEL } from './xp.js';
-import { SEASON1, TEAM_GOAL_ID, CLUE_TOTAL } from './stages/index.js';
+import { levelProgress, XP_LABEL } from './xp.js';
+import { SEASON1, TEAM_GOAL_ID, CLUE_TOTAL, stageStatus, opensLabel } from './stages/index.js';
 
 const root = document.getElementById('app');
 let profile = null;
+let teamBadge = false; // 공동 목표 달성 칭호 표시 여부 (휴게소 화면에서 갱신)
 
 function showError(err, retry) {
   root.replaceChildren(h('section', { class: 'panel' },
@@ -54,32 +55,52 @@ function statusBar() {
       h('strong', {}, profile.nickname),
       h('span', { class: 'lv' }, `Lv.${profile.level}`),
       h('span', { class: 'title-badge' }, profile.title),
+      teamBadge ? h('span', { class: 'title-badge team-badge' }, TEAM_TITLE) : null,
       profile.is_admin ? h('a', { class: 'link small', href: 'admin.html' }, '대시보드') : null),
     h('div', { class: 'xpbar', role: 'progressbar', 'aria-valuenow': pct, 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-label': '다음 레벨까지' },
       h('span', { style: `width:${pct}%` })),
-    h('button', { class: 'link small', onclick: async () => { await store.logout(); profile = null; renderLogin(); } }, '나가기'));
+    h('button', { class: 'link small', onclick: async () => { await store.logout(); profile = null; teamBadge = false; renderLogin(); } }, '나가기'));
 }
 
 // ---------- 휴게소 (허브) ----------
+const FLOOR2_STAGE = 's1-w06';   // 이 주차를 클리어하면 2층이 열림
+const BASEMENT_STAGE = 's1-w12'; // 이 주차를 클리어하면 지하가 열림
+const TEAM_TITLE = '부엌 지킴이'; // 공동 목표 달성 + 한 번이라도 보탠 친구에게 붙는 칭호
+
 const DOOR_LINE = {
   arcade: '오락실은 아직 잠겨 있는 거지. 부엌 주문부터.',
   bus: '버스는 아직 안 오는 거지. 시간표가 비어 있어.',
-  basement: '…거긴 아직. 단서가 더 모여야 하는 거지.',
+  floor2: '2층은 6주차 주문을 끝내면 불이 켜지는 거지.',
+  floor2Open: '2층 불이 켜진 거지. 무엇이 있는지는… 곧 알게 되는 거지.',
+  basement: '…거긴 아직. 12주차까지 단서를 모아야 하는 거지.',
+  basementOpen: '지하 문이 열린 거지. 모은 단서가 열쇠가 되는 거지.',
 };
 
 async function renderHub() {
-  const [clues, team, due] = await Promise.all([store.countClues(), store.teamGoal(TEAM_GOAL_ID), store.dueReviews()]);
+  const [clues, team, due, progress, helped] = await Promise.all([
+    store.listClues(), store.teamGoal(TEAM_GOAL_ID), store.dueReviews(), store.allProgress(), store.helpedTeam(),
+  ]);
+  const teamDone = !!team && team.current >= team.target;
+  teamBadge = teamDone && helped;
+  const open = {
+    kitchen: true, arcade: false, bus: false,
+    floor2: !!progress[FLOOR2_STAGE]?.cleared,
+    basement: !!progress[BASEMENT_STAGE]?.cleared,
+  };
+
   const reviewAlert = due.length ? h('section', { class: 'review-alert' },
     bubble('kkam', `2주 전에 풀었던 주문, 기억나는지 보는 거지. 복습할 단서 ${due.length}개.`),
     h('button', { class: 'btn primary wide', onclick: () => guard(() => renderReview(due[0])) }, '복습하기')) : '';
-  const tip = h('div', { class: 'scene-tip' }, bubble('kkam', '불 켜진 문을 눌러 보는 거지.'));
-  const scene = h('section', { class: 'scene', html: sceneSvg({ kitchen: true, arcade: false, bus: false, basement: false }) });
+  const tip = h('div', { class: 'scene-tip' }, bubble('kkam', teamDone
+    ? '부엌 공동 목표를 다 채운 거지. 친구들 덕분에 휴게소가 반짝이는 거지.'
+    : '불 켜진 문을 눌러 보는 거지.'));
+  const scene = h('section', { class: 'scene', html: sceneSvg(open, { deco: teamDone }) });
 
   scene.querySelectorAll('[data-door]').forEach((el) => {
     const go = () => {
       const key = el.dataset.door;
       if (key === 'kitchen') guard(renderKitchen);
-      else tip.replaceChildren(bubble('kkam', DOOR_LINE[key]));
+      else tip.replaceChildren(bubble('kkam', DOOR_LINE[open[key] ? `${key}Open` : key] || DOOR_LINE[key]));
     };
     el.addEventListener('click', go);
     el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
@@ -96,13 +117,40 @@ async function renderHub() {
         reviewAlert,
         tip,
         h('section', { class: 'strip' },
-          h('div', { class: 'strip-item' },
-            h('span', { class: 'strip-label' }, '단서 도감'),
-            h('strong', {}, `${clues} / ${CLUE_TOTAL}`)),
+          h('button', { class: 'strip-item strip-link', onclick: () => guard(renderClueBook) },
+            h('span', { class: 'strip-label' }, '단서 도감 보기'),
+            h('strong', {}, `${Object.keys(clues).length} / ${CLUE_TOTAL}`)),
           team ? h('div', { class: 'strip-item grow' },
-            h('span', { class: 'strip-label' }, `${team.title}, 친구들과 함께`),
+            h('span', { class: 'strip-label' }, teamDone ? `${team.title} 달성!` : `${team.title}, 친구들과 함께`),
             h('div', { class: 'teambar' }, h('span', { style: `width:${teamPct}%` })),
             h('span', { class: 'small muted' }, `${team.current} / ${team.target}`)) : null))));
+}
+
+// ---------- 단서 도감 ----------
+async function renderClueBook() {
+  const clues = await store.listClues();
+  const day = (iso) => new Date(iso).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' });
+  const cards = await Promise.all(SEASON1.map(async (s) => {
+    const got = clues[s.id];
+    const answer = got && s.load ? (await s.load()).default.clue.answer : '';
+    return h('li', { class: `clue-card ${got ? 'is-got' : ''}` },
+      h('span', { class: 'clue-week' }, `${s.week}주`),
+      h('strong', { class: 'clue-word' }, got ? answer : '?'),
+      h('span', { class: 'small muted' }, got ? `${day(got)} 발견` : s.title));
+  }));
+  const count = Object.keys(clues).length;
+
+  root.replaceChildren(
+    statusBar(),
+    h('section', { class: 'panel clue-book' },
+      h('header', { class: 'stage-head' },
+        h('button', { class: 'link', onclick: () => guard(renderHub) }, '휴게소로'),
+        h('span', { class: 'stage-step' }, '단서 도감')),
+      h('h2', {}, `단서 도감 ${count} / ${CLUE_TOTAL}`),
+      bubble('kkam', count
+        ? '모은 단서는 지하의 잠긴 방을 여는 열쇠가 되는 거지. 하나도 잃어버리면 안 되는 거지.'
+        : '아직 단서가 없는 거지. 영상에서 암호를 찾아 부엌에서 입력하는 거지.'),
+      h('ol', { class: 'clue-grid' }, ...cards)));
 }
 
 // ---------- 부엌 (주차 목록) ----------
@@ -110,17 +158,19 @@ async function renderKitchen() {
   const progress = await store.allProgress();
   const list = h('ol', { class: 'weeks' }, ...SEASON1.map((s) => {
     const done = progress[s.id]?.cleared;
-    const status = done ? '완료' : s.open ? '열림' : '잠김';
-    return h('li', { class: `week ${done ? 'is-done' : s.open ? 'is-open' : 'is-locked'}` },
+    const st = stageStatus(s, { isAdmin: !!profile.is_admin });
+    const playable = st === 'open' || st === 'preview';
+    const label = st === 'soon' ? opensLabel(s) : '잠김';
+    return h('li', { class: `week ${done ? 'is-done' : playable ? 'is-open' : 'is-locked'}` },
       h('span', { class: 'week-num' }, `${s.week}주`),
       h('div', { class: 'week-body' },
         h('strong', {}, s.title),
-        h('span', { class: 'small muted' }, s.subject)),
-      s.open
+        h('span', { class: 'small muted' }, st === 'preview' ? `${s.subject} · 미리보기 (${opensLabel(s)})` : s.subject)),
+      playable
         ? h('div', { class: 'week-actions' },
           h('button', { class: 'btn primary small', onclick: () => guard(() => runStage(s)) }, done ? '다시 하기' : '시작'),
           h('button', { class: 'btn ghost small', onclick: () => guard(() => renderClue(s)) }, '암호 입력'))
-        : h('span', { class: 'small muted' }, status));
+        : h('span', { class: 'small muted' }, done ? '완료' : label));
   }));
 
   root.replaceChildren(
@@ -154,10 +204,9 @@ async function renderClue(stageMeta, afterResult) {
         return;
       }
       submitBtn.disabled = true;
-      const isNew = await store.addClue(mod.clue.id);
-      if (isNew) {
-        const res = await grantXp(store, profile, [{ source: 'clue', stageId: stageMeta.id }]);
-        profile = res.profile;
+      const res = await store.collectClue(profile, mod.clue.id);
+      profile = res.profile;
+      if (res.isNew) {
         note.replaceChildren(bubble('kkam', `푸흡. 단서 카드 획득. 경험치 +${res.gained}인 거지.`));
         const fresh = statusBar(); bar.replaceWith(fresh); bar = fresh;
       } else {
@@ -239,8 +288,7 @@ async function renderReview(review) {
         if (value === item.answer) {
           if (practice) { say(`푸흡. ${item.answer}${item.unit}, 맞는 거지. 연습이라 경험치는 없는 거지.`); endButtons(); return; }
           sendBtn.disabled = true;
-          await store.answerReview(review.id, true);
-          const res = await grantXp(store, profile, [{ source: 'review', stageId: meta.id }]);
+          const res = await store.answerReview(profile, review.id, true, meta.id);
           profile = res.profile;
           say(`푸흡. 기억하고 있는 거지. 경험치 +${res.gained}.${res.levelUp ? ` 레벨 업, Lv.${profile.level}인 거지.` : ''}`);
           endButtons();
@@ -254,7 +302,7 @@ async function renderReview(review) {
           return;
         }
         sendBtn.disabled = true;
-        await store.answerReview(review.id, false);
+        profile = (await store.answerReview(profile, review.id, false, meta.id)).profile;
         say(`${dir} 괜찮은 거지. 복습은 잊은 걸 다시 꺼내 보는 연습인 거지.`);
         endButtons(h('button', {
           class: 'btn ghost', type: 'button',
@@ -297,28 +345,14 @@ async function runStage(meta) {
 }
 
 async function completeStage(meta, mod, result) {
-  const prev = await store.getProgress(meta.id);
-  const firstClear = !prev?.cleared;
-  const entries = [];
-  let teamHelped = false;
-
-  if (firstClear) {
-    await store.saveProgress({
-      stage_id: meta.id, cleared: true,
-      attempts: result.attempts, hints_used: result.hints,
-      cleared_at: new Date().toISOString(),
-    });
-    await store.scheduleReview(mod.conceptId, 14);
-    await store.contributeTeam(TEAM_GOAL_ID);
-    teamHelped = true;
-    entries.push({ source: 'clear', stageId: meta.id });
-    if (result.hints === 0) entries.push({ source: 'no_hint', stageId: meta.id });
-    if (result.bonus) entries.push({ source: 'bonus', stageId: meta.id });
-    entries.push({ source: 'team', stageId: meta.id });
-  }
-
-  const res = await grantXp(store, profile, entries);
+  // 첫 클리어 판단과 경험치 계산은 store(실제 모드는 서버 함수)가 함
+  const res = await store.completeStage(profile, {
+    stageId: meta.id, conceptId: mod.conceptId,
+    attempts: result.attempts, hints: result.hints, bonus: result.bonus,
+  });
   profile = res.profile;
+  const firstClear = res.first;
+  const teamHelped = res.first;
 
   root.replaceChildren(
     statusBar(),

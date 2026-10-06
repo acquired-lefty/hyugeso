@@ -81,7 +81,30 @@ async function renderSummary(profile) {
     h('section', { class: 'panel' },
       h('h2', {}, '아이별 요약'),
       h('p', { class: 'small muted' }, '아이디를 누르면 상세 기록과 메모를 볼 수 있어요. 평균은 첫 클리어 기준이에요.'),
-      table));
+      table),
+    backupPanel());
+}
+
+// ---------- 기록 내보내기 (백업) ----------
+// 무료 플랜은 자동 백업이 없어서, 한 달에 한 번쯤 파일로 저장해 두기를 권함
+function backupPanel() {
+  const msg = h('p', { class: 'small muted', role: 'status' }, '모든 기록을 파일 하나(JSON)로 저장해요. 한 달에 한 번쯤 저장해 두세요.');
+  const btn = h('button', {
+    class: 'btn ghost small',
+    onclick: () => guard(async () => {
+      btn.disabled = true;
+      try {
+        const data = await store.adminExport();
+        const stamp = new Date().toLocaleDateString('sv-SE'); // 2026-10-06 형식
+        const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), ...data }, null, 2)], { type: 'application/json' });
+        const a = h('a', { href: URL.createObjectURL(blob), download: `hyugeso-backup-${stamp}.json` });
+        document.body.append(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        msg.textContent = `${stamp} 기록을 저장했어요. 다운로드 폴더를 확인해 주세요.`;
+      } finally { btn.disabled = false; }
+    }),
+  }, '기록 내보내기');
+  return h('section', { class: 'panel admin-backup' }, h('h2', {}, '백업'), msg, h('div', { class: 'actions' }, btn));
 }
 
 // ---------- 아이 상세 ----------

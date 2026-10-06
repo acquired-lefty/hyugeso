@@ -1,4 +1,5 @@
 import { CONFIG } from './config.js';
+import { XP, levelFor, titleFor } from './xp.js';
 
 const DEMO_KEY = 'hyugeso-demo-v1';
 let sb = null;
@@ -17,6 +18,31 @@ function check(error, message) {
     console.error(error);
     throw new Error(message || '저장 서버와 연결하지 못했어요. 잠시 후 다시 해 보세요.');
   }
+}
+
+// 서버 함수 결과 → 화면에서 쓰는 형태
+function fromServer(profile, data, rows) {
+  const next = { ...profile, xp: data.xp, level: data.level, title: data.title };
+  const gained = rows.reduce((sum, r) => sum + r.amount, 0);
+  return { gained, rows, profile: next, levelUp: next.level > profile.level };
+}
+
+// 체험 모드: 서버 함수와 같은 규칙으로 이 기기에서 경험치 계산 후 저장
+function demoGrant(db, profile, entries) {
+  const rows = entries.map((e) => ({ source: e.source, amount: XP[e.source], stage_id: e.stageId || null }));
+  const gained = rows.reduce((sum, r) => sum + r.amount, 0);
+  db.xpLog.push(...rows.map((r) => ({ ...r, created_at: new Date().toISOString() })));
+  const xp = db.profile.xp + gained;
+  const level = levelFor(xp);
+  Object.assign(db.profile, { xp, level, title: titleFor(level) });
+  writeDemo(db);
+  return { gained, rows, profile: { ...profile, ...db.profile }, levelUp: level > profile.level };
+}
+
+function demoTeam(db, goalId = 's1-kitchen') {
+  db.team = db.team || {};
+  db.team[goalId] = db.team[goalId] || { id: goalId, title: '부엌 공동 목표', target: 60, current: 0 };
+  return db.team[goalId];
 }
 
 export const store = {
@@ -81,25 +107,6 @@ export const store = {
     return readDemo().profile || null;
   },
 
-  async updateProfile(patch) {
-    if (live) {
-      const { error } = await sb.from('profiles').update(patch).eq('id', userId);
-      check(error);
-      return;
-    }
-    const db = readDemo(); Object.assign(db.profile, patch); writeDemo(db);
-  },
-
-  async getProgress(stageId) {
-    if (live) {
-      const { data, error } = await sb.from('progress').select('*')
-        .eq('user_id', userId).eq('stage_id', stageId).maybeSingle();
-      check(error);
-      return data;
-    }
-    return readDemo().progress?.[stageId] || null;
-  },
-
   async allProgress() {
     if (live) {
       const { data, error } = await sb.from('progress').select('*').eq('user_id', userId);
@@ -109,38 +116,56 @@ export const store = {
     return readDemo().progress || {};
   },
 
-  async saveProgress(row) {
-    if (live) {
-      const { error } = await sb.from('progress').upsert({ user_id: userId, ...row });
-      check(error);
-      return;
-    }
-    const db = readDemo(); db.progress[row.stage_id] = row; writeDemo(db);
-  },
+  // ---------- 경험치가 붙는 기록 (실제 모드: 서버 함수가 경험치를 계산, 05_server_xp.sql) ----------
+  // 모두 { gained, rows, profile, levelUp } 형태로 돌려줌
 
-  async logXp(entries) {
-    const rows = entries.map((e) => ({ source: e.source, amount: e.amount, stage_id: e.stageId || null }));
+  // 스테이지 클리어: 첫 클리어일 때만 기록·복습 예약·공동 목표·경험치
+  async completeStage(profile, { stageId, conceptId, attempts, hints, bonus }) {
     if (live) {
-      const { error } = await sb.from('xp_log').insert(rows.map((r) => ({ user_id: userId, ...r })));
+      const { data, error } = await sb.rpc('complete_stage', {
+        p_stage: stageId, p_concept: conceptId, p_attempts: attempts, p_hints: hints, p_bonus: !!bonus,
+      });
       check(error);
-      return;
+      return { first: data.first, ...fromServer(profile, data, data.rows) };
     }
     const db = readDemo();
-    db.xpLog.push(...rows.map((r) => ({ ...r, created_at: new Date().toISOString() })));
-    writeDemo(db);
+    if (db.progress?.[stageId]?.cleared) return { first: false, ...demoGrant(db, profile, []) };
+    db.progress[stageId] = { stage_id: stageId, cleared: true, attempts, hints_used: hints, cleared_at: new Date().toISOString() };
+    db.reviews.push({ id: Date.now(), concept_id: conceptId, due_at: new Date(Date.now() + 14 * 86400000).toISOString() });
+    const g = demoTeam(db);
+    g.current = Math.min(g.current + 1, g.target);
+    const entries = [{ source: 'clear', stageId }];
+    if (hints === 0) entries.push({ source: 'no_hint', stageId });
+    if (bonus) entries.push({ source: 'bonus', stageId });
+    entries.push({ source: 'team', stageId });
+    return { first: true, ...demoGrant(db, profile, entries) };
   },
 
-  async addClue(clueId) {
+  // 영상 단서: 처음 모을 때만 경험치
+  async collectClue(profile, clueId) {
     if (live) {
-      const { error } = await sb.from('clues').insert({ user_id: userId, clue_id: clueId });
-      if (error?.code === '23505') return false;
+      const { data, error } = await sb.rpc('collect_clue', { p_clue: clueId });
       check(error);
-      return true;
+      return { isNew: data.new, ...fromServer(profile, data, data.new ? [{ source: 'clue', amount: data.gained }] : []) };
     }
     const db = readDemo();
-    if (db.clues[clueId]) return false;
-    db.clues[clueId] = new Date().toISOString(); writeDemo(db);
-    return true;
+    if (db.clues[clueId]) return { isNew: false, ...demoGrant(db, profile, []) };
+    db.clues[clueId] = new Date().toISOString();
+    return { isNew: true, ...demoGrant(db, profile, [{ source: 'clue', stageId: clueId }]) };
+  },
+
+  // 복습 퀴즈 답 기록: 정답이면 경험치
+  async answerReview(profile, reviewId, correct, stageId) {
+    if (live) {
+      const { data, error } = await sb.rpc('answer_review', { p_id: reviewId, p_correct: correct, p_stage: stageId || null });
+      check(error);
+      return fromServer(profile, data, data.gained ? [{ source: 'review', amount: data.gained }] : []);
+    }
+    const db = readDemo();
+    const r = (db.reviews || []).find((x) => x.id === reviewId);
+    if (!r || r.answered_at) return demoGrant(db, profile, []);
+    Object.assign(r, { correct, answered_at: new Date().toISOString() });
+    return demoGrant(db, profile, correct ? [{ source: 'review', stageId }] : []);
   },
 
   async hasClue(clueId) {
@@ -153,23 +178,14 @@ export const store = {
     return !!readDemo().clues?.[clueId];
   },
 
-  async countClues() {
+  // 단서 도감: { 's1-w01': '모은 날짜', ... }
+  async listClues() {
     if (live) {
-      const { count, error } = await sb.from('clues').select('*', { count: 'exact', head: true }).eq('user_id', userId);
+      const { data, error } = await sb.from('clues').select('clue_id, collected_at').eq('user_id', userId);
       check(error);
-      return count || 0;
+      return Object.fromEntries((data || []).map((c) => [c.clue_id, c.collected_at]));
     }
-    return Object.keys(readDemo().clues || {}).length;
-  },
-
-  async scheduleReview(conceptId, days) {
-    const due = new Date(Date.now() + days * 86400000).toISOString();
-    if (live) {
-      const { error } = await sb.from('review_quiz').insert({ user_id: userId, concept_id: conceptId, due_at: due });
-      check(error);
-      return;
-    }
-    const db = readDemo(); db.reviews.push({ id: Date.now(), concept_id: conceptId, due_at: due }); writeDemo(db);
+    return { ...(readDemo().clues || {}) };
   },
 
   // 복습할 때가 된(예정일이 지났고 아직 안 푼) 복습 퀴즈
@@ -189,39 +205,24 @@ export const store = {
       .sort((a, b) => a.due_at.localeCompare(b.due_at));
   },
 
-  async answerReview(reviewId, correct) {
-    const answered_at = new Date().toISOString();
-    if (live) {
-      const { error } = await sb.from('review_quiz').update({ correct, answered_at })
-        .eq('id', reviewId).eq('user_id', userId).is('answered_at', null);
-      check(error);
-      return;
-    }
-    const db = readDemo();
-    const r = (db.reviews || []).find((x) => x.id === reviewId);
-    if (r && !r.answered_at) Object.assign(r, { correct, answered_at });
-    writeDemo(db);
-  },
-
   async teamGoal(goalId) {
     if (live) {
       const { data, error } = await sb.from('team_goals').select('*').eq('id', goalId).maybeSingle();
       check(error);
       return data;
     }
-    return readDemo().team?.[goalId] || { id: goalId, title: '부엌 공동 목표', target: 60, current: 0 };
+    return demoTeam(readDemo(), goalId);
   },
 
-  async contributeTeam(goalId) {
+  // 공동 목표에 한 번이라도 보탰는지 (공동 목표 달성 칭호용)
+  async helpedTeam() {
     if (live) {
-      const { error } = await sb.rpc('contribute_team', { goal: goalId });
+      const { count, error } = await sb.from('xp_log').select('*', { count: 'exact', head: true })
+        .eq('user_id', userId).eq('source', 'team');
       check(error);
-      return;
+      return (count || 0) > 0;
     }
-    const db = readDemo();
-    const g = db.team[goalId] || { id: goalId, title: '부엌 공동 목표', target: 60, current: 0 };
-    g.current = Math.min(g.current + 1, g.target);
-    db.team[goalId] = g; writeDemo(db);
+    return (readDemo().xpLog || []).some((x) => x.source === 'team');
   },
 
   // ---------- 대표님용 대시보드 (실제 모드는 RLS가 관리자에게만 전체 기록을 열어 줌) ----------
@@ -297,6 +298,17 @@ export const store = {
     db.notes = db.notes || [];
     db.notes.push({ id: Date.now(), user_id: childId, body, created_at: new Date().toISOString() });
     writeDemo(db);
+  },
+
+  // 기록 내보내기(백업): 모든 표를 한 파일로 (실제 모드는 관리자 계정만 전체가 읽힘)
+  async adminExport() {
+    if (live) {
+      const tables = ['profiles', 'progress', 'xp_log', 'clues', 'review_quiz', 'team_goals', 'admin_notes', 'learning_summary'];
+      const results = await Promise.all(tables.map((t) => sb.from(t).select('*')));
+      results.forEach((r) => check(r.error, '기록을 내보내지 못했어요.'));
+      return Object.fromEntries(tables.map((t, i) => [t, results[i].data || []]));
+    }
+    return { demo: readDemo() };
   },
 
   async deleteNote(noteId) {

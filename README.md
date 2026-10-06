@@ -10,7 +10,7 @@
 
 ## 2. 실제 저장 켜기 (Supabase)
 1. supabase.com → New project (Region: Seoul).
-2. SQL Editor에서 `supabase/01_schema.sql` 실행 → 이어서 `supabase/02_setup.sql` → `supabase/03_protect_summary.sql` → `supabase/04_admin_notes.sql` 순서로 실행.
+2. SQL Editor에서 `supabase/01_schema.sql` 실행 → 이어서 `supabase/02_setup.sql` → `supabase/03_protect_summary.sql` → `supabase/04_admin_notes.sql` → `supabase/05_server_xp.sql` 순서로 실행.
 3. Authentication → Sign In / Providers → Email → **Confirm email 끄기**.
 4. Project Settings → API에서 Project URL과 anon public key 복사.
 5. `js/config.js`의 `SUPABASE_URL`, `SUPABASE_ANON_KEY`에 붙여넣고 저장소에 반영.
@@ -35,6 +35,12 @@
 사이트 주소 뒤에 `admin.html`을 붙여 접속합니다 (예: `https://acquired-lefty.github.io/hyugeso/admin.html`).
 관리자(`is_admin`) 계정만 들어갈 수 있고, 게임 화면 상단의 "대시보드" 링크도 관리자에게만 보입니다.
 
-## 7. Claude Code로 이어서 작업
+대시보드 아래 **기록 내보내기** 버튼으로 모든 기록을 파일(JSON)로 저장할 수 있습니다. 무료 플랜은 자동 백업이 없으니 한 달에 한 번쯤 저장해 두세요.
+
+## 7. 주차 공개 날짜
+`js/stages/index.js`에서 주차마다 `opensAt: '2026-10-19'`처럼 날짜를 넣으면 그날 0시(한국 시간)에 자동으로 열립니다.
+대표님 계정은 날짜 전에도 "미리보기"로 해 볼 수 있습니다.
+
+## 8. Claude Code로 이어서 작업
 저장소를 Claude Code에서 열면 `CLAUDE.md`를 읽고 맥락을 이어받습니다.
 첫 요청 예시: "3주차 암호는 ○○야. 3주차 스테이지를 만들어 줘."
