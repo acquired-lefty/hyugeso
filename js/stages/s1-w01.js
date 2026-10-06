@@ -1,4 +1,4 @@
-// 1주차: 휴게소 첫날, 레시피 3배로! (수학 3-2 곱셈)
+// 1회차: 휴게소 첫날, 레시피 3배로! (수학 3-2 곱셈)
 // 레시피 1판의 양 × 주문 수만큼, 창고에서 100·10·1 단위 상자를 골라 담는다.
 import { h, bubble, josa } from '../ui.js';
 import { LAUGH } from '../characters.js';
@@ -56,7 +56,7 @@ export default {
 
     function intro() {
       root.replaceChildren(h('section', { class: 'stage' },
-        header('1주차'),
+        header('1회차'),
         h('h2', {}, '레시피 3배로!'),
         bubble('kkam', '어서 와. 오늘은 주문 준비인 거지. 레시피에 적힌 양에 주문 수를 곱해서, 창고에서 딱 맞게 꺼내 오면 되는 거지.'),
         h('div', { class: 'actions' }, h('button', { class: 'btn primary', onclick: () => round(0) }, '창고 들어가기'))));

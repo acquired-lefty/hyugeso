@@ -1,4 +1,4 @@
-// 2주차: 냉동고의 빈 병 (과학 3-2 물질의 상태)
+// 2회차: 냉동고의 빈 병 (과학 3-2 물질의 상태)
 // 고체·액체·기체 나누기 → 모양이 그대로인 것 고르기 → 공기가 자리를 차지하는 실험 → (숨은 주문) 공기의 무게
 import { h, bubble } from '../ui.js';
 import { LAUGH } from '../characters.js';
@@ -112,7 +112,7 @@ export default {
 
     function intro() {
       root.replaceChildren(h('section', { class: 'stage' },
-        header('2주차'),
+        header('2회차'),
         h('h2', {}, '냉동고의 빈 병'),
         bubble('kkam', '…냉동고에 빈 병이 하나 있는 거지. 정말 “빈” 병일까. 오늘은 고체, 액체, 기체를 알아보는 거지.'),
         h('div', { class: 'actions' }, h('button', { class: 'btn primary', onclick: () => round(0) }, '냉동고 열기'))));

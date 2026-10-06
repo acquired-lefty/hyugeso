@@ -63,16 +63,16 @@ function statusBar() {
 }
 
 // ---------- 휴게소 (허브) ----------
-const FLOOR2_STAGE = 's1-w06';   // 이 주차를 클리어하면 2층이 열림
-const BASEMENT_STAGE = 's1-w12'; // 이 주차를 클리어하면 지하가 열림
+const FLOOR2_STAGE = 's1-w06';   // 이 회차를 클리어하면 2층이 열림
+const BASEMENT_STAGE = 's1-w12'; // 이 회차를 클리어하면 지하가 열림
 const TEAM_TITLE = '부엌 지킴이'; // 공동 목표 달성 + 한 번이라도 보탠 친구에게 붙는 칭호
 
 const DOOR_LINE = {
   arcade: '오락실은 아직 잠겨 있는 거지. 부엌 주문부터.',
   bus: '버스는 아직 안 오는 거지. 시간표가 비어 있어.',
-  floor2: '2층은 6주차 주문을 끝내면 불이 켜지는 거지.',
+  floor2: '2층은 6회차 주문을 끝내면 불이 켜지는 거지.',
   floor2Open: '2층 불이 켜진 거지. 무엇이 있는지는… 곧 알게 되는 거지.',
-  basement: '…거긴 아직. 12주차까지 단서를 모아야 하는 거지.',
+  basement: '…거긴 아직. 12회차까지 단서를 모아야 하는 거지.',
   basementOpen: '지하 문이 열린 거지. 모은 단서가 열쇠가 되는 거지.',
 };
 
@@ -134,7 +134,7 @@ async function renderClueBook() {
     const got = clues[s.id];
     const answer = got && s.load ? (await s.load()).default.clue.answer : '';
     return h('li', { class: `clue-card ${got ? 'is-got' : ''}` },
-      h('span', { class: 'clue-week' }, `${s.week}주`),
+      h('span', { class: 'clue-week' }, `${s.week}회`),
       h('strong', { class: 'clue-word' }, got ? answer : '?'),
       h('span', { class: 'small muted' }, got ? `${day(got)} 발견` : s.title));
   }));
@@ -153,7 +153,7 @@ async function renderClueBook() {
       h('ol', { class: 'clue-grid' }, ...cards)));
 }
 
-// ---------- 부엌 (주차 목록) ----------
+// ---------- 부엌 (회차 목록) ----------
 async function renderKitchen() {
   const progress = await store.allProgress();
   const list = h('ol', { class: 'weeks' }, ...SEASON1.map((s) => {
@@ -162,7 +162,7 @@ async function renderKitchen() {
     const playable = st === 'open' || st === 'preview';
     const label = st === 'soon' ? opensLabel(s) : '잠김';
     return h('li', { class: `week ${done ? 'is-done' : playable ? 'is-open' : 'is-locked'}` },
-      h('span', { class: 'week-num' }, `${s.week}주`),
+      h('span', { class: 'week-num' }, `${s.week}회`),
       h('div', { class: 'week-body' },
         h('strong', {}, s.title),
         h('span', { class: 'small muted' }, st === 'preview' ? `${s.subject} · 미리보기 (${opensLabel(s)})` : s.subject)),
@@ -180,7 +180,7 @@ async function renderKitchen() {
         h('button', { class: 'link', onclick: () => guard(renderHub) }, '휴게소로'),
         h('span', { class: 'stage-step' }, '부엌')),
       h('h2', {}, '부엌 주문판'),
-      bubble('tipo', '이번 주 주문만 열려 있어. 나머지는… 기다려. not bad한 건 원래 천천히 와.'),
+      bubble('tipo', '이번 회차 주문만 열려 있어. 나머지는… 기다려. not bad한 건 원래 천천히 와.'),
       list));
 }
 
@@ -227,7 +227,7 @@ async function renderClue(stageMeta, afterResult) {
     h('section', { class: 'panel clue-panel' },
       h('header', { class: 'stage-head' },
         h('button', { class: 'link', onclick: goBack }, backLabel),
-        h('span', { class: 'stage-step' }, `${stageMeta.week}주차 단서`)),
+        h('span', { class: 'stage-step' }, `${stageMeta.week}회차 단서`)),
       note,
       already
         ? h('div', { class: 'actions' }, h('button', { class: 'btn primary', onclick: goBack }, backLabel))
@@ -257,7 +257,7 @@ async function renderReview(review) {
   let hintStep = 0;
   let practice = false;
 
-  const talk = h('div', { class: 'talk' }, bubble('kkam', `${meta.week}주차 복습인 거지. 천천히 생각해도 되는 거지.`));
+  const talk = h('div', { class: 'talk' }, bubble('kkam', `${meta.week}회차 복습인 거지. 천천히 생각해도 되는 거지.`));
   const say = (text) => talk.replaceChildren(bubble('kkam', text));
   const input = h('input', { id: 'review-answer', type: 'text', inputmode: 'numeric', autocomplete: 'off', class: 'review-input' });
   const hintBtn = h('button', { class: 'btn ghost', type: 'button', disabled: true, onclick: showHint }, '힌트 보기');
@@ -327,7 +327,7 @@ async function renderReview(review) {
         h('header', { class: 'stage-head' },
           h('button', { class: 'link', onclick: () => guard(renderHub) }, '휴게소로'),
           h('span', { class: 'stage-step' }, '복습 퀴즈')),
-        h('h2', {}, `${meta.week}주차 복습: ${meta.subject}`),
+        h('h2', {}, `${meta.week}회차 복습: ${meta.subject}`),
         talk,
         form)));
   input.focus();

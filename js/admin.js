@@ -12,7 +12,7 @@ let conceptTitle = {};
 
 const dash = (v) => (v == null || v === '' ? '–' : v);
 const day = (iso) => (iso ? new Date(iso).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }) : '–');
-const stageName = (id) => (STAGE[id] ? `${STAGE[id].week}주 ${STAGE[id].title}` : id);
+const stageName = (id) => (STAGE[id] ? `${STAGE[id].week}회 ${STAGE[id].title}` : id);
 
 function showError(err, retry) {
   root.replaceChildren(h('section', { class: 'panel' },
@@ -119,7 +119,7 @@ function list(rows, empty, render) {
 async function renderChild(profile, kid) {
   const [detail, notes] = await Promise.all([store.adminDetail(kid.id), store.listNotes(kid.id)]);
 
-  const stages = list(detail.progress.filter((p) => p.cleared), '아직 클리어한 주차가 없어요.', (p) => [
+  const stages = list(detail.progress.filter((p) => p.cleared), '아직 클리어한 회차가 없어요.', (p) => [
     h('strong', {}, stageName(p.stage_id)),
     h('span', { class: 'small muted' }, `${day(p.cleared_at)} · 시도 ${dash(p.attempts)}회 · 힌트 ${dash(p.hints_used)}회`),
   ]);
@@ -187,7 +187,7 @@ async function renderChild(profile, kid) {
     h('div', { class: 'admin-detail' },
       h('div', { class: 'admin-col admin-col-notes' }, section('수기 메모', h('div', {}, form, noteList))),
       h('div', { class: 'admin-col' },
-        section('주차별 기록', stages),
+        section('회차별 기록', stages),
         section('영상 단서', clues),
         section('복습 퀴즈', reviews),
         section('최근 XP (20개)', xp))));
@@ -209,7 +209,7 @@ async function boot() {
 
 async function loadConceptTitles() {
   const mods = await Promise.all(SEASON1.filter((s) => s.open && s.load).map(async (s) => [s, (await s.load()).default]));
-  conceptTitle = Object.fromEntries(mods.map(([s, m]) => [m.conceptId, `${s.week}주 ${s.subject}`]));
+  conceptTitle = Object.fromEntries(mods.map(([s, m]) => [m.conceptId, `${s.week}회 ${s.subject}`]));
 }
 
 guard(async () => { await store.init(); await loadConceptTitles(); await boot(); });
