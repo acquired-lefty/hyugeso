@@ -4,7 +4,9 @@
 import { store } from './store.js';
 import { h } from './ui.js';
 import { XP_LABEL } from './xp.js';
-import { SEASON1 } from './stages/index.js';
+import { SEASON1, opensDate } from './stages/index.js';
+import { avatarSvg, normalizeAvatar } from './avatar.js';
+import { youtubeId } from './video.js';
 
 const root = document.getElementById('app');
 const STAGE = Object.fromEntries(SEASON1.map((s) => [s.id, s]));
@@ -68,11 +70,13 @@ async function renderSummary(profile) {
     ? h('div', { class: 'table-wrap' }, h('table', { class: 'admin-table' },
       h('thead', {}, h('tr', {}, ...head.map((t) => h('th', { scope: 'col' }, t)))),
       h('tbody', {}, ...kids.map((k) => h('tr', {},
-        h('th', { scope: 'row' }, h('button', { class: 'link', onclick: () => guard(() => renderChild(profile, k)) }, k.nickname)),
+        h('th', { scope: 'row' }, h('button', { class: 'link kid-link', onclick: () => guard(() => renderChild(profile, k)) },
+          h('span', { class: 'kid-avatar', html: avatarSvg(normalizeAvatar(k.avatar, k.nickname), { size: 28 }) }),
+          k.display_name ? `${k.nickname} (${k.display_name})` : k.nickname)),
         ...[`Lv.${dash(k.level)}`, dash(k.xp), dash(k.stages_cleared), dash(k.avg_attempts), dash(k.avg_hints),
           k.review_rate_pct == null ? '–' : `${k.review_rate_pct}%`, dash(k.clues)]
           .map((v, i) => h('td', { 'data-label': head[i + 1] }, v)))))))
-    : h('p', { class: 'muted' }, '아직 아이 계정이 없어요. Supabase에서 아이디를 발급하면 여기에 나타나요.');
+    : h('p', { class: 'muted' }, '아직 승인된 계정이 없어요. 가입 신청을 승인하면 여기에 나타나요.');
 
   root.replaceChildren(
     topBar(profile),
@@ -82,7 +86,82 @@ async function renderSummary(profile) {
       h('h2', {}, '아이별 요약'),
       h('p', { class: 'small muted' }, '아이디를 누르면 상세 기록과 메모를 볼 수 있어요. 평균은 첫 클리어 기준이에요.'),
       table),
+    await accountsPanel(profile),
+    await settingsPanel(profile),
     backupPanel());
+}
+
+// ---------- 가입 신청·닉네임 승인 ----------
+const AGE = { child: '어린이', adult: '어른' };
+async function accountsPanel(profile) {
+  const accounts = await store.adminAccounts();
+  const pending = accounts.filter((a) => a.status === 'pending');
+  const rejected = accounts.filter((a) => a.status === 'rejected');
+  const names = accounts.filter((a) => a.status === 'approved' && a.display_name_pending);
+  const redo = () => guard(() => renderSummary(profile));
+  const msg = h('p', { class: 'form-note', role: 'alert' });
+  const act = (fn) => async () => { msg.textContent = ''; try { await fn(); redo(); } catch (err) { msg.textContent = err.message; } };
+
+  const signupRow = (a) => {
+    const isChild = a.age_group !== 'adult';
+    const consent = h('input', { type: 'checkbox', id: `consent-${a.id}` });
+    return h('li', { class: 'account-row' },
+      h('div', {},
+        h('strong', {}, a.nickname),
+        h('span', { class: 'small muted' }, ` · ${AGE[a.age_group] || '구분 없음'} · ${new Date(a.requested_at).toLocaleDateString('ko-KR')} 신청`),
+        isChild ? h('p', { class: 'small muted' }, a.guardian_ok ? '신청할 때 "보호자와 함께" 체크함' : '"보호자와 함께" 체크 없음') : ''),
+      isChild ? h('label', { class: 'check-row small', for: `consent-${a.id}` }, consent, ' 보호자 동의 확인함 (연락해서 확인)') : '',
+      h('div', { class: 'week-actions' },
+        h('button', { class: 'btn primary small', onclick: act(() => store.adminSetStatus(a.id, 'approved', isChild ? consent.checked : false)) }, '승인'),
+        a.status === 'pending' ? h('button', { class: 'btn ghost small', onclick: act(() => store.adminSetStatus(a.id, 'rejected')) }, '거절') : ''));
+  };
+
+  return h('section', { class: 'panel admin-section' },
+    h('h2', {}, `가입 신청 ${pending.length}건`),
+    h('p', { class: 'small muted' }, '어린이(만 14세 미만)는 보호자께 직접 연락해 동의를 확인한 뒤 승인해 주세요. 확인 날짜가 기록돼요.'),
+    msg,
+    pending.length ? h('ul', { class: 'admin-list' }, ...pending.map(signupRow)) : h('p', { class: 'muted small' }, '기다리는 신청이 없어요.'),
+    names.length ? h('div', {},
+      h('h3', {}, `닉네임 승인 ${names.length}건`),
+      h('ul', { class: 'admin-list' }, ...names.map((a) => h('li', { class: 'account-row' },
+        h('div', {}, h('strong', {}, a.nickname), h('span', { class: 'small muted' }, ` → "${a.display_name_pending}"${a.display_name ? ` (지금: ${a.display_name})` : ''}`)),
+        h('div', { class: 'week-actions' },
+          h('button', { class: 'btn primary small', onclick: act(() => store.adminReviewName(a.id, true)) }, '승인'),
+          h('button', { class: 'btn ghost small', onclick: act(() => store.adminReviewName(a.id, false)) }, '거절')))))) : '',
+    rejected.length ? h('details', { class: 'clue-video' }, h('summary', {}, `거절한 신청 ${rejected.length}건`),
+      h('ul', { class: 'admin-list' }, ...rejected.map(signupRow))) : '');
+}
+
+// ---------- 회차 설정: 공개 날짜·유튜브 영상 주소 ----------
+async function settingsPanel(profile) {
+  const settings = await store.loadSettings();
+  const msg = h('p', { class: 'form-note', role: 'status' });
+  const rows = SEASON1.map((s) => {
+    const cur = settings[s.id] || {};
+    const date = h('input', { type: 'date', value: cur.opens_at || '', 'aria-label': `${s.week}회차 공개 날짜` });
+    const url = h('input', { type: 'url', value: cur.video_url || '', placeholder: 'https://youtu.be/…', 'aria-label': `${s.week}회차 영상 주소` });
+    const save = h('button', {
+      class: 'btn ghost small',
+      onclick: async () => {
+        msg.textContent = '';
+        if (url.value.trim() && !youtubeId(url.value.trim())) { msg.textContent = `${s.week}회차: 유튜브 영상 주소가 아니에요.`; return; }
+        try {
+          await store.adminSaveSetting(s.id, { opensAt: date.value, videoUrl: url.value.trim() });
+          msg.textContent = `${s.week}회차 저장했어요.`;
+          setTimeout(() => guard(() => renderSummary(profile)), 600);
+        } catch (err) { msg.textContent = err.message; }
+      },
+    }, '저장');
+    return h('li', { class: 'setting-row' },
+      h('strong', {}, `${s.week}회 ${s.title}`),
+      h('span', { class: 'small muted' }, `${s.open ? '' : '(게임 준비 중) '}공개: ${opensDate(s, settings) || '바로'}${cur.opens_at ? ' · 직접 지정' : s.opensAt ? ' · 기본 일정' : ''}`),
+      h('div', { class: 'setting-inputs' }, date, url, save));
+  });
+  return h('section', { class: 'panel admin-section' },
+    h('h2', {}, '회차 설정'),
+    h('p', { class: 'small muted' }, '기본 공개 일정은 매주 월·목이에요. 날짜를 넣으면 그 날짜(한국 시간 0시)가 우선해요. 날짜를 비우고 저장하면 기본 일정으로 돌아가요.'),
+    msg,
+    h('ul', { class: 'admin-list' }, ...rows));
 }
 
 // ---------- 기록 내보내기 (백업) ----------

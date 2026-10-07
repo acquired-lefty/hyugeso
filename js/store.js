@@ -45,6 +45,11 @@ function demoTeam(db, goalId = 's1-kitchen') {
   return db.team[goalId];
 }
 
+export const STATUS_MESSAGE = {
+  pending: '가입 신청이 승인 대기 중이에요. 대표님이 승인하면 들어올 수 있어요.',
+  rejected: '가입이 승인되지 않았어요. 대표님께 물어봐 주세요.',
+};
+
 export const store = {
   get isDemo() { return !live; },
 
@@ -78,18 +83,54 @@ export const store = {
       });
       check(error, '아이디나 비밀번호가 맞지 않아요. 다시 확인해 주세요.');
       userId = data.user.id;
+      // 승인 전·거절된 계정은 들어오지 못하게 바로 로그아웃
+      const { data: prof } = await sb.from('profiles').select('status').eq('id', userId).maybeSingle();
+      if (prof?.status !== 'approved') {
+        await sb.auth.signOut();
+        userId = null;
+        throw new Error(STATUS_MESSAGE[prof?.status] || STATUS_MESSAGE.pending);
+      }
       return;
     }
     let db = readDemo();
     if (!db.profile || db.profile.nickname !== id) {
       db = {
         profile: { id: `demo-${id}`, nickname: id, level: 1, xp: 0, title: '새내기 손님', is_admin: false },
-        progress: {}, clues: {}, xpLog: [], reviews: [], team: db.team || {},
+        progress: {}, clues: {}, xpLog: [], reviews: [], team: db.team || {}, settings: db.settings || {},
       };
     }
     db.session = true;
     writeDemo(db);
     userId = db.profile.id;
+  },
+
+  // 가입 신청: 아이디·비밀번호만 (개인정보 없음). 실제 모드는 대표님 승인 후 로그인 가능
+  async signup(rawId, password, { ageGroup, guardianOk }) {
+    const id = rawId.trim().toLowerCase();
+    if (!/^[a-z0-9_]{2,20}$/.test(id)) throw new Error('아이디는 영어 소문자, 숫자, _ 로 2~20글자예요.');
+    if (!password || password.length < 6) throw new Error('비밀번호는 6글자 이상으로 정해 주세요.');
+    if (!['child', 'adult'].includes(ageGroup)) throw new Error('어린이인지 어른인지 골라 주세요.');
+    if (ageGroup === 'child' && !guardianOk) throw new Error('어린이는 보호자와 함께 신청해 주세요.');
+    if (live) {
+      const { error } = await sb.auth.signUp({
+        email: `${id}@${CONFIG.EMAIL_DOMAIN}`, password,
+        options: { data: { age_group: ageGroup, guardian_ok: guardianOk ? 'true' : 'false' } },
+      });
+      if (error) {
+        console.error(error);
+        if (/already registered|already exists/i.test(error.message)) throw new Error('이미 있는 아이디예요. 다른 아이디를 정해 주세요.');
+        if (/not allowed|disabled/i.test(error.message)) throw new Error('지금은 가입 신청을 받지 않아요. 대표님께 물어봐 주세요.');
+        if (/password/i.test(error.message)) throw new Error('비밀번호를 더 길고 어렵게 정해 주세요.');
+        throw new Error('가입 신청을 보내지 못했어요. 잠시 후 다시 해 보세요.');
+      }
+      await sb.auth.signOut(); // 승인 전에는 로그인 상태로 두지 않음
+      return { pending: true };
+    }
+    // 체험 모드: 이 기기에서만 쓰므로 바로 가입
+    const db = { profile: { id: `demo-${id}`, nickname: id, level: 1, xp: 0, title: '새내기 손님', is_admin: false, status: 'approved', age_group: ageGroup },
+      progress: {}, clues: {}, xpLog: [], reviews: [], team: readDemo().team || {}, settings: readDemo().settings || {}, session: false };
+    writeDemo(db);
+    return { pending: false };
   },
 
   async logout() {
@@ -225,6 +266,30 @@ export const store = {
     return (readDemo().xpLog || []).some((x) => x.source === 'team');
   },
 
+  // 내 프로필: 아바타는 바로, 닉네임은 대표님 승인 후 표시 (체험 모드는 바로 반영)
+  async updateMyProfile(profile, { avatar, name }) {
+    if (live) {
+      const { data, error } = await sb.rpc('update_my_profile', { p_avatar: avatar || null, p_name: name || null });
+      check(error, '프로필을 저장하지 못했어요.');
+      return { ...profile, ...data };
+    }
+    const db = readDemo();
+    if (avatar) db.profile.avatar = avatar;
+    if (name) db.profile.display_name = name.trim().slice(0, 12);
+    writeDemo(db);
+    return { ...profile, ...db.profile };
+  },
+
+  // 회차 설정: { 's1-w03': { opens_at: '2026-10-12', video_url: 'https://…' }, … }
+  async loadSettings() {
+    if (live) {
+      const { data, error } = await sb.from('stage_settings').select('*');
+      check(error);
+      return Object.fromEntries((data || []).map((r) => [r.stage_id, r]));
+    }
+    return { ...(readDemo().settings || {}) };
+  },
+
   // ---------- 대표님용 대시보드 (실제 모드는 RLS가 관리자에게만 전체 기록을 열어 줌) ----------
 
   // 아이별 요약: learning_summary 뷰 + 아이디 + 단서 수
@@ -232,7 +297,7 @@ export const store = {
     if (live) {
       const [sum, prof, clue] = await Promise.all([
         sb.from('learning_summary').select('*'),
-        sb.from('profiles').select('id, nickname, is_admin'),
+        sb.from('profiles').select('id, nickname, is_admin, status, display_name, avatar'),
         sb.from('clues').select('user_id'),
       ]);
       check(sum.error); check(prof.error); check(clue.error);
@@ -240,8 +305,8 @@ export const store = {
       const clueCount = {};
       for (const c of clue.data || []) clueCount[c.user_id] = (clueCount[c.user_id] || 0) + 1;
       return (prof.data || [])
-        .filter((p) => !p.is_admin)
-        .map((p) => ({ ...byNick[p.nickname], id: p.id, nickname: p.nickname, clues: clueCount[p.id] || 0 }))
+        .filter((p) => !p.is_admin && (p.status || 'approved') === 'approved')
+        .map((p) => ({ ...byNick[p.nickname], id: p.id, nickname: p.nickname, display_name: p.display_name, avatar: p.avatar, clues: clueCount[p.id] || 0 }))
         .sort((a, b) => a.nickname.localeCompare(b.nickname));
     }
     const db = readDemo();
@@ -250,7 +315,7 @@ export const store = {
     const avg = (key) => (rows.length ? Math.round((rows.reduce((s, r) => s + (r[key] || 0), 0) / rows.length) * 10) / 10 : null);
     const answered = (db.reviews || []).filter((r) => r.answered_at);
     return [{
-      id: db.profile.id, nickname: db.profile.nickname, level: db.profile.level, xp: db.profile.xp,
+      id: db.profile.id, nickname: db.profile.nickname, display_name: db.profile.display_name, avatar: db.profile.avatar, level: db.profile.level, xp: db.profile.xp,
       stages_cleared: rows.length, avg_attempts: avg('attempts'), avg_hints: avg('hints_used'),
       review_rate_pct: answered.length ? Math.round((100 * answered.filter((r) => r.correct).length) / answered.length) : null,
       clues: Object.keys(db.clues || {}).length,
@@ -300,10 +365,62 @@ export const store = {
     writeDemo(db);
   },
 
+  // 가입 신청·닉네임 승인 대기 목록
+  async adminAccounts() {
+    if (live) {
+      const { data, error } = await sb.from('profiles')
+        .select('id, nickname, status, age_group, guardian_ok, consent_checked_at, requested_at, display_name, display_name_pending, is_admin')
+        .order('requested_at', { ascending: false });
+      check(error);
+      return (data || []).filter((p) => !p.is_admin);
+    }
+    const p = readDemo().profile;
+    return p ? [{ ...p, status: p.status || 'approved' }] : [];
+  },
+
+  async adminSetStatus(childId, status, consent) {
+    if (live) {
+      const { error } = await sb.rpc('admin_set_status', { p_user: childId, p_status: status, p_consent: !!consent });
+      if (error && /consent/.test(error.message)) throw new Error('어린이 계정은 "보호자 동의 확인함"에 체크해야 승인돼요.');
+      check(error, '처리하지 못했어요.');
+      return;
+    }
+    const db = readDemo(); if (db.profile?.id === childId) { db.profile.status = status; writeDemo(db); }
+  },
+
+  async adminReviewName(childId, ok) {
+    if (live) {
+      const { error } = await sb.rpc('admin_review_name', { p_user: childId, p_ok: ok });
+      check(error, '처리하지 못했어요.');
+      return;
+    }
+    const db = readDemo();
+    if (db.profile?.id === childId) {
+      if (ok) db.profile.display_name = db.profile.display_name_pending;
+      db.profile.display_name_pending = null; writeDemo(db);
+    }
+  },
+
+  // 회차 설정 저장 (날짜·영상 주소 둘 다 비우면 설정을 지움 → 기본 일정으로 돌아감)
+  async adminSaveSetting(stageId, { opensAt, videoUrl }) {
+    const row = { stage_id: stageId, opens_at: opensAt || null, video_url: videoUrl || null, updated_at: new Date().toISOString() };
+    if (live) {
+      const res = row.opens_at || row.video_url
+        ? await sb.from('stage_settings').upsert(row)
+        : await sb.from('stage_settings').delete().eq('stage_id', stageId);
+      if (res.error && /video_url/.test(res.error.message)) throw new Error('유튜브 주소(https://youtube.com/… 또는 https://youtu.be/…)만 넣을 수 있어요.');
+      check(res.error, '회차 설정을 저장하지 못했어요.');
+      return;
+    }
+    const db = readDemo(); db.settings = db.settings || {};
+    if (row.opens_at || row.video_url) db.settings[stageId] = row; else delete db.settings[stageId];
+    writeDemo(db);
+  },
+
   // 기록 내보내기(백업): 모든 표를 한 파일로 (실제 모드는 관리자 계정만 전체가 읽힘)
   async adminExport() {
     if (live) {
-      const tables = ['profiles', 'progress', 'xp_log', 'clues', 'review_quiz', 'team_goals', 'admin_notes', 'learning_summary'];
+      const tables = ['profiles', 'progress', 'xp_log', 'clues', 'review_quiz', 'team_goals', 'admin_notes', 'stage_settings', 'learning_summary'];
       const results = await Promise.all(tables.map((t) => sb.from(t).select('*')));
       results.forEach((r) => check(r.error, '기록을 내보내지 못했어요.'));
       return Object.fromEntries(tables.map((t, i) => [t, results[i].data || []]));
