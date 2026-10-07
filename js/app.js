@@ -1,12 +1,16 @@
-import { store } from './store.js';
+import { store, STATUS_MESSAGE } from './store.js';
 import { h, bubble, normalize } from './ui.js';
 import { sceneSvg } from './scene.js';
 import { levelProgress, XP_LABEL } from './xp.js';
 import { SEASON1, TEAM_GOAL_ID, CLUE_TOTAL, stageStatus, opensLabel } from './stages/index.js';
+import { AVATAR_PARTS, avatarSvg, normalizeAvatar } from './avatar.js';
+import { youtubeId, embedUrl, watchUrl } from './video.js';
 
 const root = document.getElementById('app');
 let profile = null;
 let teamBadge = false; // 공동 목표 달성 칭호 표시 여부 (휴게소 화면에서 갱신)
+let settings = {};      // 회차 설정(공개 날짜·영상 주소), 로그인할 때 불러옴
+const shownName = (p) => p.display_name || p.nickname;
 
 function showError(err, retry) {
   root.replaceChildren(h('section', { class: 'panel' },
@@ -44,7 +48,57 @@ function renderLogin(message) {
     h('h1', { class: 'title' }, '어딘가 수상한 휴게소'),
     bubble('kkam', '…손님? 이름표부터 보여 주는 거지.'),
     form,
+    h('p', { class: 'signup-link' }, '처음 왔나요? ', h('button', { class: 'link', type: 'button', onclick: () => renderSignup() }, '가입 신청하기')),
     store.isDemo ? h('p', { class: 'demo-note' }, '체험 모드: 기록이 이 기기에만 저장돼요.') : null));
+}
+
+// ---------- 가입 신청 (아이디·비밀번호만, 대표님 승인 후 사용) ----------
+function renderSignup() {
+  const idInput = h('input', { id: 'su-id', autocomplete: 'username', autocapitalize: 'none', required: true, maxlength: 20 });
+  const pwInput = h('input', { id: 'su-pw', type: 'password', autocomplete: 'new-password', required: true, minlength: 6 });
+  const pw2Input = h('input', { id: 'su-pw2', type: 'password', autocomplete: 'new-password', required: true, minlength: 6 });
+  const guardian = h('input', { id: 'su-guardian', type: 'checkbox' });
+  const guardianRow = h('label', { class: 'check-row', for: 'su-guardian' }, guardian, ' 보호자(엄마·아빠 등)와 함께 신청하고 있어요');
+  const age = (value, label) => h('label', { class: 'choice-chip' },
+    h('input', { type: 'radio', name: 'su-age', value, onchange: () => { guardianRow.hidden = value !== 'child'; } }), ` ${label}`);
+  const note = h('p', { class: 'form-note', role: 'alert' });
+  guardianRow.hidden = true;
+
+  const form = h('form', {
+    class: 'login',
+    onsubmit: async (e) => {
+      e.preventDefault();
+      note.textContent = '';
+      if (pwInput.value !== pw2Input.value) { note.textContent = '비밀번호 두 칸이 서로 달라요.'; return; }
+      const ageGroup = form.querySelector('input[name="su-age"]:checked')?.value;
+      try {
+        const res = await store.signup(idInput.value, pwInput.value, { ageGroup, guardianOk: guardian.checked });
+        root.replaceChildren(h('section', { class: 'panel login-panel' },
+          h('h1', { class: 'title' }, res.pending ? '신청 완료' : '가입 완료'),
+          bubble('kkam', res.pending
+            ? '신청서는 받은 거지. 대표님이 확인하고 승인하면 들어올 수 있는 거지.'
+            : '체험 모드라 바로 들어갈 수 있는 거지.'),
+          h('div', { class: 'actions' }, h('button', { class: 'btn primary', onclick: () => renderLogin() }, '로그인 화면으로'))));
+      } catch (err) { note.textContent = err.message; }
+    },
+  },
+  h('label', { for: 'su-id' }, '아이디 (영어 소문자·숫자, 2~20글자)'), idInput,
+  h('label', { for: 'su-pw' }, '비밀번호 (6글자 이상)'), pwInput,
+  h('label', { for: 'su-pw2' }, '비밀번호 한 번 더'), pw2Input,
+  h('fieldset', { class: 'age-field' },
+    h('legend', {}, '누가 쓰나요?'),
+    age('child', '어린이 (만 14세 미만)'), age('adult', '어른')),
+  guardianRow,
+  h('p', { class: 'small muted' }, '이름·학교·연락처는 받지 않아요. 아이디도 실제 이름 말고 별명으로 정해 주세요.'),
+  note,
+  h('button', { class: 'btn primary wide', type: 'submit' }, '가입 신청 보내기'));
+
+  root.replaceChildren(h('section', { class: 'panel login-panel' },
+    h('header', { class: 'stage-head' },
+      h('button', { class: 'link', onclick: () => renderLogin() }, '로그인으로'),
+      h('span', { class: 'stage-step' }, '가입 신청')),
+    h('h1', { class: 'title' }, '가입 신청'),
+    form));
 }
 
 // ---------- 상단 상태 ----------
@@ -52,7 +106,9 @@ function statusBar() {
   const pct = Math.round(levelProgress(profile.xp) * 100);
   return h('header', { class: 'status' },
     h('div', { class: 'who' },
-      h('strong', {}, profile.nickname),
+      h('button', { class: 'who-btn', onclick: () => guard(renderProfile), 'aria-label': '내 프로필 꾸미기' },
+        h('span', { class: 'who-avatar', html: avatarSvg(normalizeAvatar(profile.avatar, profile.nickname), { size: 36 }) }),
+        h('strong', {}, shownName(profile))),
       h('span', { class: 'lv' }, `Lv.${profile.level}`),
       h('span', { class: 'title-badge' }, profile.title),
       teamBadge ? h('span', { class: 'title-badge team-badge' }, TEAM_TITLE) : null,
@@ -158,17 +214,19 @@ async function renderKitchen() {
   const progress = await store.allProgress();
   const list = h('ol', { class: 'weeks' }, ...SEASON1.map((s) => {
     const done = progress[s.id]?.cleared;
-    const st = stageStatus(s, { isAdmin: !!profile.is_admin });
+    const st = stageStatus(s, { isAdmin: !!profile.is_admin, settings });
     const playable = st === 'open' || st === 'preview';
-    const label = st === 'soon' ? opensLabel(s) : '잠김';
+    const label = st === 'soon' ? opensLabel(s, settings) : '잠김';
+    const video = youtubeId(settings[s.id]?.video_url);
     return h('li', { class: `week ${done ? 'is-done' : playable ? 'is-open' : 'is-locked'}` },
       h('span', { class: 'week-num' }, `${s.week}회`),
       h('div', { class: 'week-body' },
         h('strong', {}, s.title),
-        h('span', { class: 'small muted' }, st === 'preview' ? `${s.subject} · 미리보기 (${opensLabel(s)})` : s.subject)),
+        h('span', { class: 'small muted' }, st === 'preview' ? `${s.subject} · 미리보기 (${opensLabel(s, settings)})` : s.subject)),
       playable
         ? h('div', { class: 'week-actions' },
           h('button', { class: 'btn primary small', onclick: () => guard(() => runStage(s)) }, done ? '다시 하기' : '시작'),
+          video ? h('button', { class: 'btn ghost small', onclick: () => guard(() => renderVideo(s)) }, '영상 보기') : null,
           h('button', { class: 'btn ghost small', onclick: () => guard(() => renderClue(s)) }, '암호 입력'))
         : h('span', { class: 'small muted' }, done ? '완료' : label));
   }));
@@ -228,6 +286,7 @@ async function renderClue(stageMeta, afterResult) {
       h('header', { class: 'stage-head' },
         h('button', { class: 'link', onclick: goBack }, backLabel),
         h('span', { class: 'stage-step' }, `${stageMeta.week}회차 단서`)),
+      clueVideo(stageMeta),
       note,
       already
         ? h('div', { class: 'actions' }, h('button', { class: 'btn primary', onclick: goBack }, backLabel))
@@ -333,6 +392,101 @@ async function renderReview(review) {
   input.focus();
 }
 
+// ---------- 내 프로필 (아바타 꾸미기·닉네임) ----------
+const PART_LABEL = { base: '모양', color: '색', eyes: '눈', acc: '꾸미기' };
+
+async function renderProfile() {
+  const draft = normalizeAvatar(profile.avatar, profile.nickname);
+  const preview = h('div', { class: 'avatar-preview' });
+  const paint = () => { preview.innerHTML = avatarSvg(draft, { size: 120, label: '내 아바타 미리보기' }); };
+  const groups = Object.entries(AVATAR_PARTS).map(([part, options]) => {
+    const btns = options.map((o) => h('button', {
+      type: 'button', class: 'part-btn', 'aria-pressed': String(draft[part] === o.id),
+      style: o.hex ? `--swatch:${o.hex}` : null,
+      onclick: () => {
+        draft[part] = o.id;
+        btns.forEach((b, i) => b.setAttribute('aria-pressed', String(options[i].id === o.id)));
+        paint();
+      },
+    }, o.hex ? h('span', { class: 'swatch' }) : null, o.name));
+    return h('fieldset', { class: 'part-group' }, h('legend', {}, PART_LABEL[part]), h('div', { class: 'part-row' }, ...btns));
+  });
+  paint();
+
+  const nameInput = h('input', { id: 'pf-name', maxlength: 12, value: profile.display_name_pending || profile.display_name || '' });
+  const note = h('p', { class: 'form-note', role: 'status' });
+  const pendingNote = () => (profile.display_name_pending
+    ? `"${profile.display_name_pending}"는 대표님 승인을 기다리는 중이에요.`
+    : '닉네임은 대표님이 승인하면 보여요. 실제 이름은 적지 말아 주세요.');
+  const pendingEl = h('p', { class: 'small muted' }, pendingNote());
+
+  const save = h('button', {
+    class: 'btn primary', type: 'button',
+    onclick: async () => {
+      save.disabled = true; note.textContent = '';
+      try {
+        const name = nameInput.value.trim();
+        profile = await store.updateMyProfile(profile, { avatar: { ...draft }, name: name && name !== profile.display_name ? name : null });
+        note.textContent = '저장했어요.';
+        pendingEl.textContent = pendingNote();
+        root.querySelector('.status').replaceWith(statusBar());
+      } catch (err) { note.textContent = err.message; } finally { save.disabled = false; }
+    },
+  }, '저장');
+
+  root.replaceChildren(
+    statusBar(),
+    h('section', { class: 'panel profile-panel' },
+      h('header', { class: 'stage-head' },
+        h('button', { class: 'link', onclick: () => guard(renderHub) }, '휴게소로'),
+        h('span', { class: 'stage-step' }, '내 프로필')),
+      h('h2', {}, '내 프로필'),
+      h('div', { class: 'profile-grid' },
+        h('div', { class: 'profile-left' }, preview,
+          h('p', { class: 'small muted' }, `아이디: ${profile.nickname}`)),
+        h('div', { class: 'profile-right' }, ...groups)),
+      h('label', { for: 'pf-name', class: 'pf-label' }, '닉네임 (12글자까지)'),
+      nameInput, pendingEl, note,
+      h('div', { class: 'actions' }, save)));
+}
+
+// ---------- 회차 연계 영상 ----------
+function videoBlock(id) {
+  return h('div', { class: 'video-block' },
+    h('div', { class: 'video-frame' },
+      h('iframe', {
+        src: embedUrl(id), title: '회차 영상', loading: 'lazy', allowfullscreen: true,
+        allow: 'accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen',
+        referrerpolicy: 'strict-origin-when-cross-origin',
+      })),
+    h('a', { class: 'link small', href: watchUrl(id), target: '_blank', rel: 'noopener' }, '화면이 안 나오면 유튜브에서 보기'));
+}
+
+// 암호 입력 화면: 펼치면 영상이 나옴 (펼치기 전에는 영상을 불러오지 않음)
+function clueVideo(stageMeta) {
+  const id = youtubeId(settings[stageMeta.id]?.video_url);
+  if (!id) return '';
+  const box = h('details', { class: 'clue-video' }, h('summary', {}, '영상 다시 보기'));
+  box.addEventListener('toggle', () => { if (box.open && !box.querySelector('.video-block')) box.append(videoBlock(id)); });
+  return box;
+}
+
+async function renderVideo(stageMeta) {
+  const id = youtubeId(settings[stageMeta.id]?.video_url);
+  root.replaceChildren(
+    statusBar(),
+    h('section', { class: 'panel video-panel' },
+      h('header', { class: 'stage-head' },
+        h('button', { class: 'link', onclick: () => guard(renderKitchen) }, '부엌으로'),
+        h('span', { class: 'stage-step' }, `${stageMeta.week}회차 영상`)),
+      h('h2', {}, stageMeta.title),
+      id ? videoBlock(id) : bubble('kkam', '이 회차 영상은 아직 준비 중인 거지.'),
+      bubble('kkam', '영상 속에 암호가 숨어 있는 거지. 찾으면 입력하는 거지.'),
+      h('div', { class: 'actions' },
+        h('button', { class: 'btn ghost', onclick: () => guard(() => runStage(stageMeta)) }, '게임 시작'),
+        h('button', { class: 'btn primary', onclick: () => guard(() => renderClue(stageMeta)) }, '암호 입력'))));
+}
+
 // ---------- 스테이지 실행 ----------
 async function runStage(meta) {
   const mod = (await meta.load()).default;
@@ -382,6 +536,12 @@ async function boot() {
     renderLogin('프로필을 찾지 못했어요. 대표님께 아이디 설정을 확인해 달라고 해 주세요.');
     return;
   }
+  if ((profile.status || 'approved') !== 'approved') {
+    await store.logout();
+    renderLogin(STATUS_MESSAGE[profile.status] || STATUS_MESSAGE.pending);
+    return;
+  }
+  settings = await store.loadSettings();
   await renderHub();
 }
 

@@ -10,17 +10,24 @@
 
 ## 2. 실제 저장 켜기 (Supabase)
 1. supabase.com → New project (Region: Seoul).
-2. SQL Editor에서 `supabase/01_schema.sql` 실행 → 이어서 `supabase/02_setup.sql` → `supabase/03_protect_summary.sql` → `supabase/04_admin_notes.sql` → `supabase/05_server_xp.sql` 순서로 실행.
+2. SQL Editor에서 `supabase/01_schema.sql` 실행 → 이어서 `supabase/02_setup.sql` → `supabase/03_protect_summary.sql` → `supabase/04_admin_notes.sql` → `supabase/05_server_xp.sql` → `supabase/06_signup_profile.sql` 순서로 실행.
 3. Authentication → Sign In / Providers → Email → **Confirm email 끄기**.
 4. Project Settings → API에서 Project URL과 anon public key 복사.
 5. `js/config.js`의 `SUPABASE_URL`, `SUPABASE_ANON_KEY`에 붙여넣고 저장소에 반영.
 
-## 3. 아이 아이디 발급
+## 3. 가입 신청과 승인
+1. Supabase **Authentication → Sign In / Providers**에서 **Allow new users to sign up** 켜기 (**Confirm email**은 끈 채로).
+2. 아이(또는 어른)는 로그인 화면의 **가입 신청하기**에서 아이디·비밀번호만으로 신청합니다.
+3. 대표님은 대시보드 **가입 신청** 칸에서 승인·거절합니다. 어린이(만 14세 미만)는 보호자께 직접 동의를 확인한 뒤 **보호자 동의 확인함**에 체크해야 승인됩니다.
+4. 닉네임을 바꾸면 대시보드 **닉네임 승인** 칸에 올라옵니다.
+
+## 3-1. 아이디 직접 발급 (예전 방식, 필요할 때만)
 1. Authentication → Users → Add user → Create new user.
 2. Email: `영어아이디@hyugeso.local` (예: `hajoon@hyugeso.local`), 비밀번호 입력, **Auto Confirm User** 체크.
-3. 아이에게는 `영어아이디`와 비밀번호만 알려 줍니다.
+3. 이렇게 만든 계정도 '승인 대기'로 시작하므로, 대시보드 **가입 신청** 칸에서 승인합니다.
+   아이에게는 `영어아이디`와 비밀번호만 알려 줍니다.
 4. 대표님 계정도 같은 방식으로 만든 뒤, SQL Editor에서
-   `update profiles set is_admin = true where nickname = '대표님아이디';`
+   `update profiles set is_admin = true, status = 'approved' where nickname = '대표님아이디';`
 
 ## 4. 자동 정지 방지
 1. 저장소 Settings → Secrets and variables → Actions → New repository secret.
@@ -37,8 +44,10 @@
 
 대시보드 아래 **기록 내보내기** 버튼으로 모든 기록을 파일(JSON)로 저장할 수 있습니다. 무료 플랜은 자동 백업이 없으니 한 달에 한 번쯤 저장해 두세요.
 
-## 7. 회차 공개 날짜
-`js/stages/index.js`에서 회차마다 `opensAt: '2026-10-19'`처럼 날짜를 넣으면 그날 0시(한국 시간)에 자동으로 열립니다.
+## 7. 회차 공개 날짜와 영상
+기본 일정은 매주 월·목(3회차 10월 12일부터) 0시(한국 시간)에 자동 공개입니다.
+대시보드 **회차 설정**에서 회차마다 날짜를 바꾸거나, 연계 유튜브 영상 주소를 넣을 수 있습니다.
+영상은 부엌의 **영상 보기**, 암호 입력 화면의 **영상 다시 보기**에서 볼 수 있습니다.
 대표님 계정은 날짜 전에도 "미리보기"로 해 볼 수 있습니다.
 
 ## 8. Claude Code로 이어서 작업
