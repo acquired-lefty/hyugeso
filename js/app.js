@@ -222,7 +222,7 @@ async function renderKitchen() {
       h('span', { class: 'week-num' }, `${s.week}회`),
       h('div', { class: 'week-body' },
         h('strong', {}, s.title),
-        h('span', { class: 'small muted' }, st === 'preview' ? `${s.subject} · 미리보기 (${opensLabel(s, settings)})` : s.subject)),
+        h('span', { class: 'small muted' }, s.subject, st === 'preview' ? h('span', { class: 'nowrap' }, ` · 미리보기 (${opensLabel(s, settings)})`) : null)),
       playable
         ? h('div', { class: 'week-actions' },
           h('button', { class: 'btn primary small', onclick: () => guard(() => runStage(s)) }, done ? '다시 하기' : '시작'),
