@@ -27,7 +27,7 @@
 3. 이렇게 만든 계정도 '승인 대기'로 시작하므로, 대시보드 **가입 신청** 칸에서 승인합니다.
    아이에게는 `영어아이디`와 비밀번호만 알려 줍니다.
 4. 대표님 계정도 같은 방식으로 만든 뒤, SQL Editor에서
-   `update profiles set is_admin = true where nickname = '대표님아이디';`
+   `update profiles set is_admin = true, status = 'approved' where nickname = '대표님아이디';`
 
 ## 4. 자동 정지 방지
 1. 저장소 Settings → Secrets and variables → Actions → New repository secret.
