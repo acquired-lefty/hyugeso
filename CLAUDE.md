@@ -7,6 +7,7 @@
 - 이 저장소(Claude Code): 웹게임, 대표님용 학습 대시보드, DB 변경
 - claude.ai 채팅: 영상 기획, 대본, Google Flow 프롬프트, 나레이션 (게임 코드는 다루지 않음)
 - 영상 속 단서(암호)는 채팅에서 대본과 함께 정해진다. 새 회차 작업 전 대표님께 그 회차 암호를 받아 `clue.answer`에 넣는다.
+- 채팅 ↔ 이 저장소는 `docs/episode-template.md` 양식으로 주고받는다. 받은 구성문은 만들기 전에 과학·수학 정확성과 게임 규칙을 먼저 검증하고, 고칠 점을 대표님께 알린다.
 
 ## 기술 구성
 - 빌드 도구 없음. 순수 HTML + ES 모듈 + CSS. GitHub Pages로 그대로 배포.
@@ -33,6 +34,7 @@ admin.html, js/admin.js  대표님용 학습 대시보드 (아이별 요약·상
 js/stages/index.js    시즌1 회차 목록 (open 플래그로 공개 관리)
 js/stages/s1-wNN.js   회차별 스테이지
 supabase/             DB 설정 SQL
+docs/episode-template.md  회차 구성 양식 (채팅에서 채워 오는 형식, 채팅용 게임 규칙 요약 포함)
 ```
 
 ## 스테이지 작성 규칙 (s1-w01.js가 기준 예시)
