@@ -1,4 +1,4 @@
-# 역할: 풀 리퀘스트마다 자바스크립트 문법 오류가 없는지 자동 확인 (CI)
+# 역할: 풀 리퀘스트마다 자바스크립트 문법 확인 + 체험 모드로 모든 회차를 끝까지 실행 (CI)
 # 실패하면 머지하지 않고 고친 뒤 다시 확인함 (CLAUDE.md "작업 흐름")
 name: Check
 
@@ -22,3 +22,28 @@ jobs:
             node --check "$f" || { echo "문법 오류: $f"; status=1; }
           done
           exit $status
+
+  play:
+    runs-on: ubuntu-latest
+    needs: syntax
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Playwright 설치
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: 모든 회차 끝까지 실행 (휴대폰·태블릿·PC 폭)
+        run: |
+          python3 -m http.server 8000 >/dev/null 2>&1 &
+          sleep 1
+          mkdir -p shots
+          SHOTS=shots node tests/e2e.mjs
+      - name: 실패 화면 저장
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-shots
+          path: shots

@@ -37,24 +37,30 @@ js/avatar.js          아바타 그림 조합 (모양·색·눈·꾸미기, 사�
 js/video.js           유튜브 주소 → 영상 ID, 개인정보 보호 모드(youtube-nocookie) 주소
 admin.html, js/admin.js  대표님용 학습 대시보드 (아이별 요약·상세·수기 메모, 가입·닉네임 승인, 회차 설정, 백업)
 js/stages/index.js    시즌1 회차 목록 (open 플래그로 공개 관리)
-js/stages/s1-wNN.js   회차별 스테이지
+js/stages/engine.js   회차 공통 틀 (들어가기·라운드·힌트·숨은 주문, 문제 형태별 화면)
+js/stages/s1-wNN.js   회차별 스테이지 (문제 내용만 적고 engine의 mountStage 사용)
+js/sound.js           효과음 재생 (버튼을 눌러야 재생)
+assets/sounds/        효과음 파일 + SOURCES.md (출처·이용 조건 기록)
+tests/e2e.mjs         체험 모드로 공개된 모든 회차를 끝까지 실행하는 자동 검사 (CI)
 supabase/             DB 설정 SQL
 docs/episode-template.md  회차 구성 양식 (채팅에서 채워 오는 형식, 채팅용 게임 규칙 요약 포함)
 ```
 
-## 스테이지 작성 규칙 (s1-w01.js가 기준 예시)
+## 스테이지 작성 규칙 (s1-w03.js가 기준 예시)
 ```js
+import { mountStage } from './engine.js';
 export default {
   id: 's1-wNN',                 // stages/index.js와 같게
   conceptId: 'math-xxx-01',     // 복습 퀴즈용 개념 ID
   clue: { id: 's1-wNN', answer: '영상 암호', ask: '질문 문구' },
   review: [{ q: '문제', answer: 48, unit: '개', hints: ['개념', '구체적 쪼개기'] }],  // 2주 후 복습 문제 (숫자 답, 하나를 골라 출제)
-  mount(root, { finish, exit }) {
-    // 게임 진행 후 finish({ attempts, hints, bonus }) 호출
-    // attempts: 제출 횟수 합계, hints: 본 라운드 힌트 사용 수, bonus: 숨은 주문 성공 여부
-  },
+  stage: { episode, title, host, intro, rounds: [{ who, line, steps }], bonus },   // 문제 내용 (형식은 engine.js 맨 위 설명)
+  mount(root, ctx) { mountStage(root, this.stage, ctx); },   // finish({ attempts, hints, bonus })는 engine이 부름
 };
 ```
+- 문제 형태(`step.kind`): boxes(상자 담기) / sort(칸 나누기) / pick(모두 고르기) / choice(고르기) / deal(한 바퀴씩 나눠 담기) / div(몫·나머지) / fill(빈칸 숫자) / listen(소리 듣고 고르기). 새 형태가 필요하면 `engine.js`의 `KINDS`와 `tests/e2e.mjs`의 `SOLVE`에 함께 추가한다.
+- 소리: `listen`의 `sounds: [{ label, src: 'assets/sounds/s1-wNN/파일.mp3' }]`. 파일을 넣을 때마다 `assets/sounds/SOURCES.md`에 출처·조건을 적는다.
+- 자동 검사: `tests/e2e.mjs`가 `stage` 설정의 정답으로 공개된 모든 회차를 세 폭에서 끝까지 풀어 본다. 로컬은 `python3 -m http.server 8000` 후 `node tests/e2e.mjs`.
 - 한 스테이지 = 본 라운드 3개 + 선택형 숨은 주문 1개. 10분 안에 끝나는 분량.
 - 오답 피드백은 "많다/모자라다" 방향만 알려 주고 정답은 말하지 않는다.
 - 오답 2회 후 힌트를 권한다. 힌트는 2단계(개념 → 구체적 쪼개기).
