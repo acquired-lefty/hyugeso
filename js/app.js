@@ -5,6 +5,7 @@ import { levelProgress, XP_LABEL } from './xp.js';
 import { SEASON1, TEAM_GOAL_ID, CLUE_TOTAL, stageStatus, opensLabel } from './stages/index.js';
 import { AVATAR_PARTS, avatarSvg, normalizeAvatar } from './avatar.js';
 import { youtubeId, embedUrl, watchUrl } from './video.js';
+import { keypad } from './stages/engine.js';
 
 const root = document.getElementById('app');
 let profile = null;
@@ -127,9 +128,7 @@ const DOOR_LINE = {
   arcade: '오락실은 아직 잠겨 있는 거지. 부엌 주문부터.',
   bus: '버스는 아직 안 오는 거지. 시간표가 비어 있어.',
   floor2: '2층은 6회차 주문을 끝내면 불이 켜지는 거지.',
-  floor2Open: '2층 불이 켜진 거지. 무엇이 있는지는… 곧 알게 되는 거지.',
   basement: '…거긴 아직. 12회차까지 단서를 모아야 하는 거지.',
-  basementOpen: '지하 문이 열린 거지. 모은 단서가 열쇠가 되는 거지.',
 };
 
 async function renderHub() {
@@ -156,6 +155,8 @@ async function renderHub() {
     const go = () => {
       const key = el.dataset.door;
       if (key === 'kitchen') guard(renderKitchen);
+      else if (key === 'floor2' && open.floor2) guard(renderFloor2);
+      else if (key === 'basement' && open.basement) guard(renderBasement);
       else tip.replaceChildren(bubble('kkam', DOOR_LINE[open[key] ? `${key}Open` : key] || DOOR_LINE[key]));
     };
     el.addEventListener('click', go);
@@ -180,6 +181,115 @@ async function renderHub() {
             h('span', { class: 'strip-label' }, teamDone ? `${team.title} 달성!` : `${team.title}, 친구들과 함께`),
             h('div', { class: 'teambar' }, h('span', { style: `width:${teamPct}%` })),
             h('span', { class: 'small muted' }, `${team.current} / ${team.target}`)) : null))));
+}
+
+// ---------- 2층 (6회차 클리어 후): 복습실 + 단서 전시실 ----------
+const pageHead = (label, back) => h('header', { class: 'stage-head' },
+  h('button', { class: 'link', onclick: () => guard(back) }, back === renderHub ? '휴게소로' : '2층으로'),
+  h('span', { class: 'stage-step' }, label));
+
+function renderFloor2() {
+  root.replaceChildren(
+    statusBar(),
+    h('section', { class: 'panel floor2' },
+      pageHead('2층', renderHub),
+      h('h2', {}, '휴게소 2층'),
+      bubble('kkam', '2층 불이 켜진 거지. 지난 문제를 다시 풀어 보는 방, 모은 단서와 영상을 모아 둔 방이 있는 거지.'),
+      h('div', { class: 'room-grid' },
+        h('button', { class: 'room-btn', onclick: () => guard(renderPracticeRoom) },
+          h('strong', {}, '복습실'), h('span', { class: 'small' }, '끝낸 회차 문제를 언제든 다시 풀어요. 연습이라 경험치는 없어요.')),
+        h('button', { class: 'room-btn', onclick: () => guard(renderGallery) },
+          h('strong', {}, '단서 전시실'), h('span', { class: 'small' }, '모은 단서와 회차 영상을 다시 봐요.')))));
+}
+
+async function renderPracticeRoom() {
+  const progress = await store.allProgress();
+  const done = SEASON1.filter((s) => s.load && progress[s.id]?.cleared);
+  const items = await Promise.all(done.map(async (s) => ({ s, mod: (await s.load()).default })));
+  const usable = items.filter(({ mod }) => mod.review?.length);
+  root.replaceChildren(
+    statusBar(),
+    h('section', { class: 'panel' },
+      pageHead('복습실', renderFloor2),
+      h('h2', {}, '복습실'),
+      bubble('kkam', usable.length ? '풀고 싶은 회차를 고르는 거지. 몇 번이고 다시 해도 되는 거지.' : '아직 다시 풀 회차가 없는 거지.'),
+      h('ol', { class: 'gallery' }, ...usable.map(({ s, mod }) => h('li', { class: 'gallery-item' },
+        h('span', {}, h('strong', {}, `${s.week}회 `), s.subject),
+        h('button', { class: 'btn primary small', onclick: () => guard(() => renderPractice(s, mod)) }, '연습하기'))))));
+}
+
+// 연습 문제: 기록·경험치 없음, 오답은 방향만, 한 번 틀리면 힌트 버튼
+function renderPractice(meta, mod) {
+  const item = mod.review[Math.floor(Math.random() * mod.review.length)];
+  let hintStep = 0;
+  const talk = h('div', { class: 'talk' }, bubble('kkam', `${meta.week}회차 연습인 거지. 숫자 버튼으로 답을 누르는 거지.`));
+  const say = (text) => talk.replaceChildren(bubble('kkam', text));
+  const pad = keypad(item.unit);
+  const hintBtn = h('button', {
+    class: 'btn ghost', disabled: true,
+    onclick: () => {
+      if (hintStep >= item.hints.length) { say('힌트는 다 말한 거지. 이제 네 차례.'); return; }
+      say(item.hints[hintStep]); hintStep += 1;
+    },
+  }, '힌트 보기');
+  const actions = h('div', { class: 'actions' });
+  const again = h('button', { class: 'btn ghost', onclick: () => renderPractice(meta, mod) }, '다른 문제');
+  const check = h('button', {
+    class: 'btn primary',
+    onclick: () => {
+      const v = pad.get();
+      if (v == null) { say('숫자를 먼저 눌러 주는 거지.'); return; }
+      if (v === item.answer) {
+        say(`푸흡. ${item.answer}${item.unit}, 맞는 거지.`);
+        pad.el.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+        actions.replaceChildren(again, h('button', { class: 'btn primary', onclick: () => guard(renderPracticeRoom) }, '복습실로'));
+        return;
+      }
+      hintBtn.disabled = false;
+      say(`${v > item.answer ? '음… 너무 많은 거지.' : '음… 조금 모자란 거지.'} 힌트를 봐도 괜찮은 거지.`);
+    },
+  }, '확인');
+  actions.replaceChildren(again, hintBtn, check);
+  root.replaceChildren(
+    statusBar(),
+    h('div', { class: 'stage-holder' },
+      h('section', { class: 'stage' },
+        h('header', { class: 'stage-head' },
+          h('button', { class: 'link', onclick: () => guard(renderPracticeRoom) }, '복습실로'),
+          h('span', { class: 'stage-step' }, '연습')),
+        h('h2', {}, `${meta.week}회차 연습: ${meta.subject}`),
+        talk, h('p', { class: 'ask' }, item.q), pad.el, actions)));
+}
+
+async function renderGallery() {
+  const clues = await store.listClues();
+  root.replaceChildren(
+    statusBar(),
+    h('section', { class: 'panel' },
+      pageHead('단서 전시실', renderFloor2),
+      h('h2', {}, '단서 전시실'),
+      bubble('kkam', '모은 단서와 회차 영상을 모아 둔 거지. 못 찾은 단서는 영상을 다시 보면 있는 거지.'),
+      h('ol', { class: 'gallery' }, ...SEASON1.map((s) => {
+        const got = clues[s.id];
+        const video = youtubeId(settings[s.id]?.video_url);
+        return h('li', { class: 'gallery-item' },
+          h('span', {}, h('strong', {}, `${s.week}회 `), s.title, ' · ', h('strong', { class: 'clue-word' }, got ? got.word || '✓' : '?')),
+          video ? h('button', { class: 'btn ghost small', onclick: () => guard(() => renderVideo(s, renderGallery)) }, '영상 보기') : '');
+      }))));
+}
+
+// ---------- 지하 (12회차 클리어 후) ----------
+async function renderBasement() {
+  const clues = await store.listClues();
+  root.replaceChildren(
+    statusBar(),
+    h('section', { class: 'panel' },
+      pageHead('지하', renderHub),
+      h('h2', {}, '지하의 잠긴 방'),
+      bubble('ddal', '자물쇠 12개가 모두 열린 방입니다만. 시즌1을 끝까지 온 손님만 들어올 수 있습니다만.'),
+      h('ol', { class: 'clue-grid' }, ...SEASON1.map((s) => h('li', { class: `clue-card ${clues[s.id] ? 'is-got' : ''}` },
+        h('span', { class: 'clue-week' }, `${s.week}회`),
+        h('strong', { class: 'clue-word' }, clues[s.id]?.word || (clues[s.id] ? '✓' : '?')))))));
 }
 
 // ---------- 단서 도감 ----------
@@ -244,6 +354,7 @@ async function renderKitchen() {
 // ---------- 영상 단서 입력 ----------
 async function renderClue(stageMeta, afterResult) {
   const mod = (await stageMeta.load()).default;
+  if (!mod.clue.hash) throw new Error('이 회차 암호는 아직 준비 중인 거지. 나중에 다시 오는 거지.');
   const already = await store.hasClue(mod.clue.id);
   const backLabel = afterResult ? '휴게소로' : '부엌으로';
   const goBack = () => guard(afterResult ? renderHub : renderKitchen);
@@ -473,13 +584,13 @@ function clueVideo(stageMeta) {
   return box;
 }
 
-async function renderVideo(stageMeta) {
+async function renderVideo(stageMeta, back = renderKitchen) {
   const id = youtubeId(settings[stageMeta.id]?.video_url);
   root.replaceChildren(
     statusBar(),
     h('section', { class: 'panel video-panel' },
       h('header', { class: 'stage-head' },
-        h('button', { class: 'link', onclick: () => guard(renderKitchen) }, '부엌으로'),
+        h('button', { class: 'link', onclick: () => guard(back) }, back === renderKitchen ? '부엌으로' : '전시실로'),
         h('span', { class: 'stage-step' }, `${stageMeta.week}회차 영상`)),
       h('h2', {}, stageMeta.title),
       id ? videoBlock(id) : bubble('kkam', '이 회차 영상은 아직 준비 중인 거지.'),
