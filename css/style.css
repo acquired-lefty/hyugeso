@@ -175,14 +175,6 @@ input {
 .plate-cookies { justify-content: center; max-width: 90px; }
 .cookie { width: 18px; height: 18px; border-radius: 50%; background: var(--kraft); border: 2px solid #7A5A2E; box-shadow: inset 4px 4px 0 -2px #5A3A1E; }
 .div-eq { font-family: var(--serif); font-size: 28px; font-weight: 700; text-align: center; margin: 12px 0 6px; white-space: nowrap; }
-.steppers { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
-.stepper { display: grid; gap: 6px; justify-items: center; padding: 10px 12px; background: #fff; border: 2px solid #E6DCC6; border-radius: 14px; }
-.step-label { font-weight: 700; }
-.step-row { display: flex; align-items: center; gap: 8px; }
-.step-btn { width: 56px; height: 56px; border-radius: 14px; border: 0; font: inherit; font-size: 30px; font-weight: 700; line-height: 1; background: var(--mint); color: var(--ink); cursor: pointer; box-shadow: 0 3px 0 #3E8F82; }
-.step-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #3E8F82; }
-.step-btn:disabled { opacity: .5; cursor: default; }
-.step-val { min-width: 48px; text-align: center; font-family: var(--serif); font-size: 34px; font-weight: 700; }
 
 /* 소리 듣고 고르기 (4회차~) */
 .sound-row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 6px 0; }
@@ -193,9 +185,15 @@ input {
 
 /* 숫자 버튼판 (6회차 중간 복습~) */
 .keypad { display: grid; gap: 8px; max-width: 320px; margin: 8px auto 0; }
-.pad-screen { display: flex; align-items: baseline; justify-content: center; gap: 6px; padding: 8px; background: #fff; border: 2px solid #E6DCC6; border-radius: 14px; }
-.pad-val { font-family: var(--serif); font-size: 36px; font-weight: 700; min-width: 3ch; text-align: right; }
+.pad-screen { display: grid; gap: 8px; }
+.pad-screen.multi { grid-template-columns: 1fr 1fr; }
+.pad-field { display: flex; align-items: baseline; justify-content: center; gap: 6px; min-height: 64px; padding: 6px 8px; font: inherit; color: var(--ink); background: #fff; border: 3px solid #E6DCC6; border-radius: 14px; cursor: pointer; }
+.pad-field:disabled { cursor: default; opacity: 1; }
+.pad-screen.multi .pad-field[aria-pressed="true"] { border-color: var(--sodium); box-shadow: 0 0 0 2px var(--sodium) inset; }
+.pad-label { font-weight: 700; font-size: 15px; color: #8A6A33; }
+.pad-val { font-family: var(--serif); font-size: 34px; font-weight: 700; min-width: 2ch; text-align: right; }
 .pad-unit { font-weight: 700; }
+.pad-help { text-align: center; margin: 0; }
 .pad-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .pad-key { min-height: 56px; border: 0; border-radius: 14px; font: inherit; font-size: 24px; font-weight: 700; background: #F3E6C8; color: var(--ink); cursor: pointer; box-shadow: 0 3px 0 var(--kraft); }
 .pad-key[aria-label="모두 지우기"] { font-size: 16px; }
@@ -406,5 +404,5 @@ textarea {
 
 @media (prefers-reduced-motion: reduce) {
   .flicker, .char-kkam .eyes { animation: none; }
-  .btn.primary:active, .box:active .box-art, .step-btn:active:not(:disabled), .pad-key:active:not(:disabled) { transform: none; }
+  .btn.primary:active, .box:active .box-art, .pad-key:active:not(:disabled) { transform: none; }
 }

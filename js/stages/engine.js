@@ -3,28 +3,21 @@
 //
 // cfg = {
 //   episode: '3회차', title: '쿠키 공평하게 나누기',
-//   host: 'tipo',                      // 그 회차 내레이터: 들어가기·힌트·숨은 주문 안내
+//   host: 'tipo',                      // 그 회차 진행 캐릭터(hostFor): 들어가기·힌트·결과
 //   intro: { line, start },            // 첫 대사, 시작 버튼 글자
 //   rounds: [{ who, label?, line, steps: [step, …] }],   // 본 라운드 3개
 //   bonus: { offer, who, line, steps },                    // 숨은 주문 (선택)
 // }
 // step.kind: boxes(상자 담기) / sort(칸 나누기) / pick(모두 고르기) / choice(고르기)
 //            deal(한 바퀴씩 나눠 담기) / div(몫·나머지) / fill(빈칸 숫자) / listen(소리 듣고 고르기)
-//            number(숫자 버튼으로 답 적기, pool에서 한 문제를 골라 출제: 6회차 중간 복습)
+//            review(복습 문제 pool에서 하나: 숫자 답은 숫자 버튼, 보기가 있으면 3지선다. 6회차 중간 복습)
+// 고르기(choice·listen)의 보기는 항상 3개. 숫자 답은 화면 숫자 버튼(0~9)으로만 입력
 // 모든 step에 hints: ['개념', '구체적으로 쪼개기'] (2단계)
 import { h, bubble, josa } from '../ui.js';
-import { LAUGH } from '../characters.js';
+import { LAUGH, LINES } from '../characters.js';
 import { playSound, stopSound } from '../sound.js';
 
-// 캐릭터별 말투
-const VOICE = {
-  kkam: { offer: '힌트를 봐도 괜찮은 거지.', noMore: '힌트는 다 말한 거지. 이제 네 차례.', notIt: '음… 그건 아닌 거지.',
-    tooMany: '음… 너무 많은 거지.', tooFew: '음… 조금 모자란 거지.', typeFirst: '숫자를 먼저 눌러 주는 거지.', right: '기억하고 있는 거지.' },
-  tipo: { offer: '힌트 봐도 돼. Okay?', noMore: '힌트는 다 말했어. 이제 네 차례.', notIt: '음… 그건 아니야.',
-    tooMany: '음… 너무 많아.', tooFew: '음… 모자라.', typeFirst: '숫자부터 눌러.', right: 'Perfect.' },
-  ddal: { offer: '힌트를 봐도 괜찮습니다만.', noMore: '힌트는 다 말했습니다만. 이제 차례입니다만.', notIt: '음… 그건 아닌 것 같습니다만.',
-    tooMany: '음… 너무 많습니다만.', tooFew: '음… 조금 모자랍니다만.', typeFirst: '숫자를 먼저 눌러 주셔야 합니다만.', right: '기억하고 있습니다만.' },
-};
+const VOICE = LINES; // 캐릭터별 말투 (characters.js)
 
 // 몫·나머지 오답 피드백 (방향만, 정답은 말하지 않음)
 const DIV_MSG = {
@@ -38,32 +31,35 @@ const OFFER_FIRST = new Set(['choice', 'listen']);
 
 const BOX_NAME = { 100: '통', 10: '봉지', 1: '낱개' };
 
-// − / + 로만 숫자를 고르는 칸 (자유 입력 없음)
-export function stepper(label, max) {
-  let v = 0;
-  const out = h('output', { class: 'step-val', 'aria-live': 'polite' }, '0');
-  const set = (n) => { v = Math.max(0, Math.min(max, n)); out.textContent = v; };
-  const minus = h('button', { class: 'step-btn', 'aria-label': `${label} 1 줄이기`, onclick: () => set(v - 1) }, '−');
-  const plus = h('button', { class: 'step-btn', 'aria-label': `${label} 1 늘리기`, onclick: () => set(v + 1) }, '+');
-  const el = h('div', { class: 'stepper' }, h('span', { class: 'step-label' }, label), h('div', { class: 'step-row' }, minus, out, plus));
-  return { el, get: () => v };
-}
-
-// 숫자 버튼판 (자유 입력 없이 누르기만, 최대 4자리)
-export function keypad(unit) {
-  let v = '';
-  const out = h('output', { class: 'pad-val', 'aria-live': 'polite' }, '?');
-  const show = () => { out.textContent = v || '?'; };
-  const key = (label, fn, aria) => h('button', { class: 'pad-key', 'aria-label': aria || label, onclick: () => { fn(); show(); } }, label);
-  const keys = [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => key(String(n), () => { if (v.length < 4) v = v === '0' ? String(n) : v + n; }));
+// 숫자 버튼판 (0~9, 최대 4자리). 칸이 여러 개면 칸을 눌러 고른 뒤 숫자를 누름
+// fields: [{ label, unit }] → { el, get(i) } (빈칸이면 null)
+export function numberPad(fields) {
+  const vals = fields.map(() => '');
+  let cur = 0;
+  const outs = fields.map((f, i) => h('button', {
+    class: 'pad-field', type: 'button', 'aria-pressed': String(i === 0), 'aria-label': `${f.label || '답'} 칸`,
+    onclick: () => { cur = i; show(); },
+  }, f.label ? h('span', { class: 'pad-label' }, f.label) : '', h('output', { class: 'pad-val' }, '?'), h('span', { class: 'pad-unit' }, f.unit || '')));
+  function show() {
+    outs.forEach((o, i) => {
+      o.querySelector('.pad-val').textContent = vals[i] || '?';
+      o.setAttribute('aria-pressed', String(i === cur));
+    });
+  }
+  const type = (d) => { if (vals[cur].length < 4) vals[cur] = vals[cur] === '0' ? d : vals[cur] + d; };
+  const key = (label, fn, aria) => h('button', { class: 'pad-key', type: 'button', 'aria-label': aria || label, onclick: () => { fn(); show(); } }, label);
   const el = h('div', { class: 'keypad' },
-    h('div', { class: 'pad-screen' }, out, h('span', { class: 'pad-unit' }, unit || '')),
-    h('div', { class: 'pad-keys' }, ...keys,
-      key('지우기', () => { v = ''; }, '모두 지우기'),
-      key('0', () => { if (v.length < 4 && v !== '0') v += '0'; }),
-      key('⌫', () => { v = v.slice(0, -1); }, '한 칸 지우기')));
-  return { el, get: () => (v === '' ? null : Number(v)) };
+    h('div', { class: `pad-screen ${fields.length > 1 ? 'multi' : ''}`, 'aria-live': 'polite' }, ...outs),
+    h('div', { class: 'pad-keys' },
+      ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => key(String(n), () => type(String(n)))),
+      key('지우기', () => { vals[cur] = ''; }, '모두 지우기'),
+      key('0', () => type('0')),
+      key('⌫', () => { vals[cur] = vals[cur].slice(0, -1); }, '한 칸 지우기')));
+  if (fields.length === 1) outs[0].disabled = true; // 칸이 하나면 고를 필요 없음
+  show();
+  return { el, get: (i = 0) => (vals[i] === '' ? null : Number(vals[i])) };
 }
+export const keypad = (unit) => numberPad([{ unit }]);
 
 const cookies = (n) => Array.from({ length: n }, () => h('span', { class: 'cookie', 'aria-hidden': 'true' }));
 
@@ -101,6 +97,7 @@ export function mountStage(root, cfg, { finish, exit }) {
       progress.textContent = r.steps.length > 1 ? `문제 ${i + 1} / ${r.steps.length}` : '';
       let wrongHere = 0;
       let hintStep = 0;
+      let offerFirst = OFFER_FIRST.has(s.kind);
 
       const hintBtn = h('button', {
         class: 'btn ghost',
@@ -114,6 +111,7 @@ export function mountStage(root, cfg, { finish, exit }) {
 
       const ctx = {
         r, s, body, actions, hintBtn, say,
+        offerFirst: () => { offerFirst = true; },
         attempt: () => { stats.attempts += 1; },
         correct(text) {
           stopSound();
@@ -126,7 +124,7 @@ export function mountStage(root, cfg, { finish, exit }) {
         },
         wrong(msg) {
           wrongHere += 1;
-          const offer = hintStep === 0 && (wrongHere >= 2 || OFFER_FIRST.has(s.kind));
+          const offer = hintStep === 0 && (wrongHere >= 2 || offerFirst);
           say(r.who, offer ? `${msg} ${VOICE[r.who].offer}` : msg);
         },
       };
@@ -158,23 +156,26 @@ export function mountStage(root, cfg, { finish, exit }) {
 // ---------- 문제 형태 ----------
 
 // 몫·나머지 입력 칸 + 확인
-function divInputs({ r, body, actions, hintBtn, attempt, correct, wrong }, n, d) {
-  const q = stepper('몫', 30);
-  const rem = stepper('나머지', 30);
+function divInputs({ r, body, actions, hintBtn, say, attempt, correct, wrong }, n, d) {
+  const pad = numberPad([{ label: '몫' }, { label: '나머지' }]);
   body.append(
     h('p', { class: 'div-eq', 'aria-label': `${n} 나누기 ${d}는 몫 몇, 나머지 몇` }, `${n} ÷ ${d} = □ … □`),
-    h('div', { class: 'steppers' }, q.el, rem.el));
+    h('p', { class: 'muted small pad-help' }, '몫 칸이나 나머지 칸을 누르고 숫자를 눌러요.'),
+    pad.el);
   actions.replaceChildren(hintBtn, h('button', {
     class: 'btn primary',
     onclick: () => {
+      const q = pad.get(0);
+      const rem = pad.get(1);
+      if (q == null || rem == null) { say(r.who, VOICE[r.who].typeFirst); return; }
       attempt();
       const Q = Math.floor(n / d);
       const R = n % d;
       const m = DIV_MSG[r.who];
-      if (q.get() === Q && rem.get() === R) { correct(`${n} ÷ ${d} = ${Q} … ${R}.`); return; }
+      if (q === Q && rem === R) { correct(`${n} ÷ ${d} = ${Q} … ${R}.`); return; }
       // 몫이 틀리면 몫 방향만, 몫이 맞으면 나머지 방향만 알려 줌
-      if (q.get() !== Q) wrong(q.get() > Q ? m.qBig : m.qSmall);
-      else wrong(rem.get() > R ? m.rBig : m.rSmall);
+      if (q !== Q) wrong(q > Q ? m.qBig : m.qSmall);
+      else wrong(rem > R ? m.rBig : m.rSmall);
     },
   }, '확인'));
 }
@@ -369,16 +370,23 @@ const KINDS = {
     divInputs(ctx, ctx.s.n, ctx.s.d);
   },
 
-  // 숫자 답: pool에서 한 문제를 골라 출제, 많다/모자라다만 알려 줌
-  number(ctx) {
-    const { r, s, body, actions, hintBtn, say, attempt, correct, wrong } = ctx;
+  // 복습 문제: pool에서 하나를 골라 출제. 숫자 답은 숫자 버튼, 보기가 있으면 3지선다
+  review(ctx) {
+    const { r, s, body, actions, hintBtn, say, attempt, correct, wrong, offerFirst } = ctx;
     const item = s.pool[Math.floor(Math.random() * s.pool.length)];
     s.hints = item.hints; // 힌트 버튼이 이 문제의 힌트를 말하게 함
+    body.append(s.from ? h('p', { class: 'muted small' }, s.from) : '', h('p', { class: 'ask' }, item.q));
+    if (item.choices) {
+      offerFirst(); // 3지선다는 첫 오답부터 힌트 권유
+      body.append(h('div', { class: 'choice-list' }, ...item.choices.map((c, i) => h('button', {
+        class: 'choice-btn',
+        onclick: () => { attempt(); if (i === item.answer) correct(`${c}. ${VOICE[r.who].right}`); else wrong(VOICE[r.who].notIt); },
+      }, c))));
+      actions.replaceChildren(hintBtn);
+      return;
+    }
     const pad = keypad(item.unit);
-    body.append(
-      s.from ? h('p', { class: 'muted small' }, s.from) : '',
-      h('p', { class: 'ask' }, item.q),
-      pad.el);
+    body.append(pad.el);
     actions.replaceChildren(hintBtn, h('button', {
       class: 'btn primary',
       onclick: () => {
@@ -393,17 +401,18 @@ const KINDS = {
 
   // 빈칸 숫자: 식 속 □에 들어갈 수 (많다/모자라다만 알려 줌)
   fill(ctx) {
-    const { s, body, actions, hintBtn, attempt, correct, wrong } = ctx;
-    const box = stepper('□', s.max || 20);
+    const { r, s, body, actions, hintBtn, say, attempt, correct, wrong } = ctx;
+    const pad = numberPad([{ label: '□' }]);
     body.append(
       h('p', { class: 'ask' }, s.ask),
       h('p', { class: 'div-eq', 'aria-label': s.eqLabel || s.eq }, s.eq),
-      h('div', { class: 'steppers' }, box.el));
+      pad.el);
     actions.replaceChildren(hintBtn, h('button', {
       class: 'btn primary',
       onclick: () => {
+        const v = pad.get();
+        if (v == null) { say(r.who, VOICE[r.who].typeFirst); return; }
         attempt();
-        const v = box.get();
         if (v === s.answer) { correct(s.okText); return; }
         wrong(v > s.answer ? s.msgs.big : s.msgs.small);
       },

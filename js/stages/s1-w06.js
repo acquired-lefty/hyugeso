@@ -9,7 +9,7 @@ import w02 from './s1-w02.js';
 import w03 from './s1-w03.js';
 
 // 회차 한 칸 = 그 회차 복습 문제 중 하나를 골라 냄
-const from = (week, mod) => mod?.review?.length && { kind: 'number', from: `${week}회차 복습`, pool: mod.review };
+const from = (week, mod) => mod?.review?.length && { kind: 'review', from: `${week}회차 복습`, pool: mod.review };
 
 const ROUNDS = [
   { who: 'kkam', line: '1회차와 2회차에서 배운 거지. 기억나는지 보는 거지.', steps: [from(1, w01), from(2, w02)] },
@@ -38,11 +38,11 @@ const BONUS = {
 // 2주 후 복습 퀴즈 문제 (숫자로 답함)
 const REVIEW = [
   { q: '쿠키 300원, 우유 500원. 쿠키 2개와 우유 1개는 모두 얼마?', answer: 1100, unit: '원',
-    hints: ['같은 물건이 여러 개면 곱하거나 여러 번 더하는 거지.', '300 + 300 = 600, 거기에 500을 더하는 거지.'] },
+    hints: ['같은 물건이 여러 개면 곱하거나 여러 번 더하는 겁니다만.', '300 + 300 = 600, 거기에 500을 더하는 겁니다만.'] },
   { q: '1000원을 내고 700원짜리 호떡을 샀어. 거스름돈은 얼마?', answer: 300, unit: '원',
-    hints: ['낸 돈에서 물건값을 빼면 거스름돈인 거지.', '1000 − 700을 해 보는 거지.'] },
+    hints: ['낸 돈에서 물건값을 빼면 거스름돈입니다만.', '1000 − 700을 해 보시면 됩니다만.'] },
   { q: '200원짜리 사탕 4개는 모두 얼마?', answer: 800, unit: '원',
-    hints: ['200을 4번 더하는 거지.', '2 × 4 = 8. 그럼 200 × 4는?'] },
+    hints: ['200을 4번 더하는 겁니다만.', '2 × 4 = 8. 그럼 200 × 4는?'] },
 ];
 
 export default {
@@ -56,7 +56,7 @@ export default {
     title: '중간 미션: 메뉴 가격표',
     host: 'ddal',
     intro: {
-      line: '중간 점검입니다만. 지난 회차 문제를 하나씩 풀면 2층 열쇠를 드립니다만. 숫자 버튼으로 답을 누르시면 됩니다만.',
+      line: '중간 점검입니다만. 지난 회차 문제를 하나씩 풀면 2층 열쇠를 드립니다만.',
       start: '열쇠 받으러 가기',
     },
     rounds: ROUNDS,

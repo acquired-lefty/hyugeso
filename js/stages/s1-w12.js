@@ -33,7 +33,7 @@ export default {
   conceptId: 'math-final-01',
   review: [
     { q: '자물쇠 12개 중 7개를 열었어. 남은 자물쇠는 몇 개?', answer: 5, unit: '개',
-      hints: ['전체에서 연 것을 빼는 거지.', '12 − 7을 해 보는 거지.'] },
+      hints: ['전체에서 연 것을 빼는 겁니다만.', '12 − 7을 해 보시면 됩니다만.'] },
   ],
   clue: { id: 's1-w12', hash: null, ask: '영상에서 지하 문에 적힌 암호는?' },
   stage: FINAL,
