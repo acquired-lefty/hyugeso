@@ -1,0 +1,24 @@
+# 역할: 풀 리퀘스트마다 자바스크립트 문법 오류가 없는지 자동 확인 (CI)
+# 실패하면 머지하지 않고 고친 뒤 다시 확인함 (CLAUDE.md "작업 흐름")
+name: Check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: JavaScript 문법 확인
+        run: |
+          status=0
+          for f in js/*.js js/stages/*.js; do
+            node --check "$f" || { echo "문법 오류: $f"; status=1; }
+          done
+          exit $status
