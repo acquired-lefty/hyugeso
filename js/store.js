@@ -177,7 +177,9 @@ export const store = {
     const db = readDemo();
     if (db.progress?.[stageId]?.cleared) return { first: false, ...demoGrant(db, profile, []) };
     db.progress[stageId] = { stage_id: stageId, cleared: true, attempts, hints_used: hints, cleared_at: new Date().toISOString() };
-    db.reviews.push({ id: Date.now(), concept_id: conceptId, due_at: new Date(Date.now() + 14 * 86400000).toISOString() });
+    // 같은 순간에 두 번 기록돼도 번호가 겹치지 않게 함
+    const id = Math.max(Date.now(), ...db.reviews.map((r) => (r.id || 0) + 1));
+    db.reviews.push({ id, concept_id: conceptId, due_at: new Date(Date.now() + 14 * 86400000).toISOString() });
     const g = demoTeam(db);
     g.current = Math.min(g.current + 1, g.target);
     const entries = [{ source: 'clear', stageId }];

@@ -21,6 +21,9 @@ export const SEASON1 = [
   { id: 's1-w12', week: 12, title: '피날레: 잠긴 방 열기', subject: '통합: 시즌 복습', opensAt: '2026-11-12', open: false, load: () => import('./s1-w12.js') },
 ];
 
+// 진행 캐릭터: 2회마다 교대 (1~2회 규리사 → 3~4회 티포 → 5~6회 자판남 → 반복). 영상 내레이터와 같음
+export const hostFor = (week) => ['kkam', 'tipo', 'ddal'][Math.floor((week - 1) / 2) % 3];
+
 // 실제 공개 날짜: 대시보드 설정이 있으면 그것, 없으면 기본 일정
 export const opensDate = (s, settings = {}) => settings[s.id]?.opens_at || s.opensAt || '';
 

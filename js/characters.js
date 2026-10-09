@@ -35,6 +35,46 @@ export const CHAR_NAME = { kkam: '규리사', tipo: '티포', ddal: '자판남' 
 // 각 캐릭터의 웃음소리 (대본·게임 공통)
 export const LAUGH = { kkam: '푸흡.', tipo: '쉬이익— not bad.', ddal: '딸깍, 딸깍. 정확합니다만.' };
 
+// 화면 공통 대사 (그 회차 진행 캐릭터가 말함: 들어가기·힌트·결과·암호·복습)
+export const LINES = {
+  kkam: {
+    offer: '힌트를 봐도 괜찮은 거지.', noMore: '힌트는 다 말한 거지. 이제 네 차례.', notIt: '음… 그건 아닌 거지.',
+    tooMany: '음… 너무 많은 거지.', tooFew: '음… 조금 모자란 거지.', typeFirst: '숫자를 먼저 눌러 주는 거지.', right: '기억하고 있는 거지.',
+    retry: '다시 해 본 거지. 경험치는 처음 한 번만 주는 거지. 그래도 연습은 남는 거지.',
+    findClue: '영상에서 암호를 찾았다면 입력해 보는 거지.',
+    clueWrong: '음… 그 암호는 아닌 거지. 영상을 다시 보고 와도 되는 거지.',
+    clueGot: (xp) => `푸흡. 단서 카드 획득. 경험치 +${xp}인 거지.`, clueHave: '이미 가진 단서인 거지.', clueAlready: '이 단서는 이미 도감에 있는 거지.',
+    reviewIntro: (w) => `${w}회차 복습인 거지. 천천히 생각해도 되는 거지.`,
+    reviewOk: (xp) => `푸흡. 기억하고 있는 거지. 경험치 +${xp}.`, reviewAgain: '한 번 더. 힌트를 봐도 괜찮은 거지.',
+    reviewEnd: '괜찮은 거지. 복습은 잊은 걸 다시 꺼내 보는 연습인 거지.', practiceAgain: '연습으로 한 번 더 푸는 거지.',
+    practiceOk: '맞는 거지. 연습이라 경험치는 없는 거지.', pickFirst: '답을 먼저 골라 주는 거지.',
+  },
+  tipo: {
+    offer: '힌트 봐도 돼. Okay?', noMore: '힌트는 다 말했어. 이제 네 차례.', notIt: '음… 그건 아니야.',
+    tooMany: '음… 너무 많아.', tooFew: '음… 모자라.', typeFirst: '숫자부터 눌러.', right: 'Perfect.',
+    retry: '다시 해 봤네. 경험치는 처음 한 번만. 그래도 연습은 not bad.',
+    findClue: '영상에서 암호 찾았으면 입력해. Okay?',
+    clueWrong: '음… 그 암호는 아니야. 영상 다시 보고 와.',
+    clueGot: (xp) => `쉬이익— 단서 카드 획득. 경험치 +${xp}. Perfect.`, clueHave: '이미 가진 단서야.', clueAlready: '이 단서는 이미 도감에 있어.',
+    reviewIntro: (w) => `${w}회차 복습. 천천히. Okay?`,
+    reviewOk: (xp) => `쉬이익— 기억하고 있네. 경험치 +${xp}.`, reviewAgain: '한 번 더. 힌트 봐도 돼.',
+    reviewEnd: '괜찮아. 복습은 잊은 걸 다시 꺼내는 연습이야.', practiceAgain: '연습으로 한 번 더. Okay.',
+    practiceOk: '맞아. 연습이라 경험치는 없어.', pickFirst: '답부터 골라.',
+  },
+  ddal: {
+    offer: '힌트를 봐도 괜찮습니다만.', noMore: '힌트는 다 말했습니다만. 이제 차례입니다만.', notIt: '음… 그건 아닌 것 같습니다만.',
+    tooMany: '음… 너무 많습니다만.', tooFew: '음… 조금 모자랍니다만.', typeFirst: '숫자를 먼저 눌러 주셔야 합니다만.', right: '기억하고 있습니다만.',
+    retry: '다시 하셨습니다만. 경험치는 처음 한 번만 드립니다만. 연습은 남습니다만.',
+    findClue: '영상에서 암호를 찾으셨다면 입력하시면 됩니다만.',
+    clueWrong: '음… 그 암호는 아닙니다만. 영상을 다시 보고 오셔도 됩니다만.',
+    clueGot: (xp) => `딸깍, 딸깍. 단서 카드 획득입니다만. 경험치 +${xp}.`, clueHave: '이미 가진 단서입니다만.', clueAlready: '이 단서는 이미 도감에 있습니다만.',
+    reviewIntro: (w) => `${w}회차 복습입니다만. 천천히 생각하셔도 됩니다만.`,
+    reviewOk: (xp) => `딸깍, 딸깍. 기억하고 계십니다만. 경험치 +${xp}.`, reviewAgain: '한 번 더입니다만. 힌트를 봐도 괜찮습니다만.',
+    reviewEnd: '괜찮습니다만. 복습은 잊은 걸 다시 꺼내는 연습입니다만.', practiceAgain: '연습으로 한 번 더 풉니다만.',
+    practiceOk: '맞습니다만. 연습이라 경험치는 없습니다만.', pickFirst: '답을 먼저 골라 주셔야 합니다만.',
+  },
+};
+
 export const charSvg = (key, cls = '') =>
   `<svg viewBox="0 0 80 100" class="char char-${key} ${cls}" aria-hidden="true">${INNER[key]}</svg>`;
 

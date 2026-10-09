@@ -4,7 +4,7 @@
 // 실행: python3 -m http.server 8000 & node tests/e2e.mjs   (BASE 환경변수로 주소 변경)
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { SEASON1 } from '../js/stages/index.js';
+import { SEASON1, hostFor } from '../js/stages/index.js';
 
 // 영상 암호 (화면 코드에는 지문만 있음)
 const ANSWERS = JSON.parse(readFileSync(new URL('./clue-answers.json', import.meta.url), 'utf8'));
@@ -21,11 +21,13 @@ const DEMO_CONFIG = "export const CONFIG = { SUPABASE_URL: '', SUPABASE_ANON_KEY
 const errors = [];
 const fail = (msg) => errors.push(msg);
 
-async function setStepper(p, label, v) {
-  const st = p.locator('.stepper', { has: p.locator(`.step-label:text-is("${label}")`) });
-  const cur = Number(await st.locator('.step-val').innerText());
-  const btn = st.locator('.step-btn').nth(v > cur ? 1 : 0);
-  for (let i = 0; i < Math.abs(v - cur); i += 1) await btn.click();
+// 숫자 버튼판: 칸을 고르고(칸이 여러 개일 때) 지운 뒤 숫자를 누름
+async function enterNumbers(p, values) {
+  for (const [i, v] of values.entries()) {
+    if (values.length > 1) await p.locator('.pad-field').nth(i).click();
+    await p.locator('.pad-key[aria-label="모두 지우기"]').click();
+    await pressNumber(p, v);
+  }
 }
 
 const clickText = (p, text) => p.locator(`.stage button:text-is("${text}")`).click();
@@ -55,26 +57,57 @@ const SOLVE = {
   },
   async deal(p, s) {
     for (let i = 0; i < Math.floor(s.n / s.d); i += 1) await clickText(p, '한 바퀴 돌리기');
-    await setStepper(p, '몫', Math.floor(s.n / s.d));
-    await setStepper(p, '나머지', s.n % s.d);
+    await enterNumbers(p, [Math.floor(s.n / s.d), s.n % s.d]);
     await clickText(p, '확인');
   },
   async div(p, s) {
-    await setStepper(p, '몫', Math.floor(s.n / s.d));
-    await setStepper(p, '나머지', s.n % s.d);
+    await enterNumbers(p, [Math.floor(s.n / s.d), s.n % s.d]);
     await clickText(p, '확인');
   },
-  async fill(p, s) { await setStepper(p, '□', s.answer); await clickText(p, '확인'); },
-  async number(p, s) {
+  async fill(p, s) { await enterNumbers(p, [s.answer]); await clickText(p, '확인'); },
+  async review(p, s) {
     const q = await p.locator('.stage .ask').innerText();
-    const item = s.pool.find((x) => x.q === q);
-    await pressNumber(p, item.answer);
-    await clickText(p, '확인');
+    await answerItem(p, s.pool.find((x) => x.q === q));
   },
 };
 
 async function pressNumber(p, n) {
   for (const d of String(n)) await p.locator(`.pad-key[aria-label="${d}"]`).click();
+}
+
+// 복습 문제 하나 맞히기 (숫자 답 또는 3지선다)
+async function answerItem(p, item) {
+  if (item.choices) { await p.locator('.choice-btn').nth(item.answer).click(); return; }
+  await enterNumbers(p, [item.answer]);
+  await clickText(p, '확인');
+}
+
+// ---------- 게임 규칙 점검 (CLAUDE.md "게임 규칙") ----------
+// 3지선다 보기 3개, 진행 캐릭터 2회마다 교대, 복습 형식(수학 숫자·과학 3지선다), 암호가 화면에 새지 않음
+function checkRules(meta, mod, answer) {
+  const tag = `rules/${meta.id}`;
+  const st = mod.stage;
+  if (st.host !== hostFor(meta.week)) fail(`${tag}: 진행 캐릭터 ${st.host} (규칙: ${hostFor(meta.week)})`);
+  const steps = [...st.rounds, ...(st.bonus ? [st.bonus] : [])].flatMap((r) => r.steps);
+  for (const s of steps) {
+    if ((s.kind === 'choice' || s.kind === 'listen') && s.choices.length !== 3) fail(`${tag}: 보기 ${s.choices.length}개 (3개여야 함): ${s.ask}`);
+    if (s.hints?.length !== 2 && s.kind !== 'review') fail(`${tag}: 힌트는 2단계여야 함: ${s.ask || s.kind}`);
+  }
+  const science = meta.subject.startsWith('과학');
+  for (const item of mod.review || []) {
+    if (item.choices && item.choices.length !== 3) fail(`${tag}: 복습 보기 ${item.choices.length}개: ${item.q}`);
+    if (science && !item.choices) fail(`${tag}: 과학 회차 복습은 3지선다여야 함: ${item.q}`);
+    if (meta.subject.startsWith('수학') && item.choices) fail(`${tag}: 수학 회차 복습은 숫자 답이어야 함: ${item.q}`);
+  }
+  if (meta.open && !((mod.review || []).length >= 3 && mod.review.length <= 4)) fail(`${tag}: 복습 문제는 3~4개 (지금 ${(mod.review || []).length}개)`);
+  if (answer) {
+    // 암호를 반으로 나눠 사이에 두 글자까지 끼어도 걸러냄 (예: '자리를 차지')
+    const w = answer.replace(/\s+/g, '');
+    const half = Math.ceil(w.length / 2);
+    const leak = new RegExp(`${w.slice(0, half)}.{0,2}${w.slice(half)}`);
+    const text = JSON.stringify({ st, review: mod.review, ask: mod.clue.ask, title: meta.title }).replace(/\s+/g, '');
+    if (leak.test(text)) fail(`${tag}: 화면 문구에 암호 '${answer}'와 거의 같은 표현이 있음`);
+  }
 }
 
 // 오답 하나를 내 보고 피드백이 나오는지 확인 (고르기 형태만)
@@ -118,6 +151,7 @@ for (const meta of SEASON1.filter((s) => s.open && s.load)) {
   else if (hashOf(answer) !== mod.clue.hash) fail(`${meta.id}: 회차 파일의 clue.hash가 암호 '${answer}'와 맞지 않음`);
   stages.push({ meta, mod, answer: answer || '' });
 }
+for (const meta of SEASON1.filter((s) => s.load)) checkRules(meta, (await meta.load()).default, ANSWERS[meta.id]);
 
 for (const [name, w] of WIDTHS) {
   const full = name === 'mobile';
@@ -153,15 +187,17 @@ for (const [name, w] of WIDTHS) {
         await playRound(p, mod.stage.bonus, `${tag}/bonus`, { useHint: {}, wrong: full });
       }
       await p.waitForSelector('.result');
+      if (!(await p.locator(`.result .bubble-${hostFor(meta.week)}`).count())) fail(`${tag}: 결과 화면 대사가 진행 캐릭터가 아님`);
       if (SHOTS) await p.screenshot({ path: `${SHOTS}/${name}-${meta.id}-result.png`, fullPage: true });
       await p.click('.result >> text=암호 입력');
       await p.fill('#clue', '틀린 암호');
       await p.click('.clue-form button:text-is("확인")');
-      if (!/아닌 거지/.test(await p.locator('.talk p').innerText())) fail(`${tag}: 틀린 암호가 통과됨`);
+      if (!/아닌|아니/.test(await p.locator('.talk p').innerText())) fail(`${tag}: 틀린 암호가 통과됨`);
       await p.fill('#clue', ` ${answer.slice(0, 2)} ${answer.slice(2)} `); // 띄어쓰기는 무시되어야 함
       await p.click('.clue-form button:text-is("확인")');
       const said = await p.locator('.talk p').innerText();
       if (!/단서 카드 획득/.test(said)) fail(`${tag}: 암호 입력 실패 (${said})`);
+      if (!(await p.locator(`.talk .bubble-${hostFor(meta.week)}`).count())) fail(`${tag}: 암호 화면 대사가 진행 캐릭터가 아님`);
       await checkOverflow(p, w, `${tag}/clue`);
 
       const db = await p.evaluate(() => JSON.parse(localStorage.getItem('hyugeso-demo-v1')));
@@ -226,6 +262,30 @@ async function extraChecks(p, w) {
     } catch (err) { fail(`${tag}: ${err.message.split('\n')[0]}`); }
   }
 
+  // 2주 후 복습 퀴즈: 예약 날짜를 앞당겨 공개된 회차의 복습을 모두 풀어 봄
+  try {
+    await p.evaluate(() => {
+      const db = JSON.parse(localStorage.getItem('hyugeso-demo-v1'));
+      db.reviews.forEach((r, i) => { r.due_at = new Date(Date.now() - (100 - i) * 1000).toISOString(); });
+      localStorage.setItem('hyugeso-demo-v1', JSON.stringify(db));
+    });
+    for (const { meta, mod } of stages) {
+      await p.goto(BASE); await p.waitForSelector('.scene');
+      await p.click('.review-alert button');
+      await p.waitForSelector('.stage .ask');
+      const head = await p.locator('.stage h2').innerText();
+      const { mod: m, meta: mt } = stages.find((x) => head.startsWith(`${x.meta.week}회차`));
+      const q = await p.locator('.stage .ask').innerText();
+      const item = m.review.find((x) => x.q === q);
+      if (!(await p.locator(`.talk .bubble-${hostFor(mt.week)}`).count())) fail(`review/${mt.id}: 복습 대사가 진행 캐릭터가 아님`);
+      await answerItem(p, item);
+      try { await p.locator('.talk p', { hasText: '+40' }).waitFor({ timeout: 5000 }); } catch { fail(`review/${mt.id}: 복습 정답 경험치 없음 (${await p.locator('.talk p').innerText()})`); }
+      await checkOverflow(p, w, `review/${mt.id}`);
+      void meta; void mod;
+    }
+    console.log('ok  review');
+  } catch (err) { fail(`review: ${err.message.split('\n')[0]}`); }
+
   // 2층: 6회차 클리어 기록을 넣고 복습실·전시실 확인
   try {
     await p.evaluate(() => {
@@ -240,7 +300,7 @@ async function extraChecks(p, w) {
     const mod = (await SEASON1[0].load()).default;
     const q = await p.locator('.stage .ask').innerText(); // 문제는 무작위라 화면에서 읽음
     const it = mod.review.find((x) => x.q === q);
-    await pressNumber(p, it.answer + 1);
+    await enterNumbers(p, [it.answer + 1]);
     await clickText(p, '확인');
     if (!/너무 많은/.test(await p.locator('.talk p').innerText())) fail('floor2: 연습 오답 피드백 없음');
     await clickText(p, '⌫'); await clickText(p, '지우기');

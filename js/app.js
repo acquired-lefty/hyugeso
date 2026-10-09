@@ -2,7 +2,8 @@ import { store, STATUS_MESSAGE } from './store.js';
 import { h, bubble, normalize, clueHash } from './ui.js';
 import { sceneSvg } from './scene.js';
 import { levelProgress, XP_LABEL } from './xp.js';
-import { SEASON1, TEAM_GOAL_ID, CLUE_TOTAL, stageStatus, opensLabel } from './stages/index.js';
+import { SEASON1, TEAM_GOAL_ID, CLUE_TOTAL, stageStatus, opensLabel, hostFor } from './stages/index.js';
+import { LINES } from './characters.js';
 import { AVATAR_PARTS, avatarSvg, normalizeAvatar } from './avatar.js';
 import { youtubeId, embedUrl, watchUrl } from './video.js';
 import { keypad } from './stages/engine.js';
@@ -218,38 +219,32 @@ async function renderPracticeRoom() {
         h('button', { class: 'btn primary small', onclick: () => guard(() => renderPractice(s, mod)) }, '연습하기'))))));
 }
 
-// 연습 문제: 기록·경험치 없음, 오답은 방향만, 한 번 틀리면 힌트 버튼
+// 연습 문제: 기록·경험치 없음, 오답은 방향만, 한 번 틀리면 힌트 버튼 (말은 그 회차 진행 캐릭터)
 function renderPractice(meta, mod) {
   const item = mod.review[Math.floor(Math.random() * mod.review.length)];
+  const who = hostFor(meta.week);
+  const L = LINES[who];
   let hintStep = 0;
-  const talk = h('div', { class: 'talk' }, bubble('kkam', `${meta.week}회차 연습인 거지. 숫자 버튼으로 답을 누르는 거지.`));
-  const say = (text) => talk.replaceChildren(bubble('kkam', text));
-  const pad = keypad(item.unit);
+  const talk = h('div', { class: 'talk' }, bubble(who, `${meta.week}회차 연습. ${L.pickFirst}`));
+  const say = (text) => talk.replaceChildren(bubble(who, text));
   const hintBtn = h('button', {
     class: 'btn ghost', disabled: true,
     onclick: () => {
-      if (hintStep >= item.hints.length) { say('힌트는 다 말한 거지. 이제 네 차례.'); return; }
+      if (hintStep >= item.hints.length) { say(L.noMore); return; }
       say(item.hints[hintStep]); hintStep += 1;
     },
   }, '힌트 보기');
   const actions = h('div', { class: 'actions' });
   const again = h('button', { class: 'btn ghost', onclick: () => renderPractice(meta, mod) }, '다른 문제');
-  const check = h('button', {
-    class: 'btn primary',
-    onclick: () => {
-      const v = pad.get();
-      if (v == null) { say('숫자를 먼저 눌러 주는 거지.'); return; }
-      if (v === item.answer) {
-        say(`푸흡. ${item.answer}${item.unit}, 맞는 거지.`);
-        pad.el.querySelectorAll('button').forEach((b) => { b.disabled = true; });
-        actions.replaceChildren(again, h('button', { class: 'btn primary', onclick: () => guard(renderPracticeRoom) }, '복습실로'));
-        return;
-      }
-      hintBtn.disabled = false;
-      say(`${v > item.answer ? '음… 너무 많은 거지.' : '음… 조금 모자란 거지.'} 힌트를 봐도 괜찮은 거지.`);
+  const answer = reviewAnswer(item, {
+    onRight: () => {
+      say(`${item.choices ? item.choices[item.answer] : `${item.answer}${item.unit}`}. ${L.practiceOk}`);
+      actions.replaceChildren(again, h('button', { class: 'btn primary', onclick: () => guard(renderPracticeRoom) }, '복습실로'));
     },
-  }, '확인');
-  actions.replaceChildren(again, hintBtn, check);
+    onWrong: (dir) => { hintBtn.disabled = false; say(`${dir === 'more' ? L.tooMany : dir === 'less' ? L.tooFew : L.notIt} ${L.offer}`); },
+    onEmpty: () => say(item.choices ? L.pickFirst : L.typeFirst),
+  });
+  actions.replaceChildren(again, hintBtn, ...answer.buttons);
   root.replaceChildren(
     statusBar(),
     h('div', { class: 'stage-holder' },
@@ -258,7 +253,29 @@ function renderPractice(meta, mod) {
           h('button', { class: 'link', onclick: () => guard(renderPracticeRoom) }, '복습실로'),
           h('span', { class: 'stage-step' }, '연습')),
         h('h2', {}, `${meta.week}회차 연습: ${meta.subject}`),
-        talk, h('p', { class: 'ask' }, item.q), pad.el, actions)));
+        talk, h('p', { class: 'ask' }, item.q), answer.el, actions)));
+}
+
+// 복습 문제 답하기 칸: 숫자 답은 숫자 버튼, 보기가 있으면 3지선다
+// onWrong('more' | 'less' | 'no'), 답하면 버튼을 잠그고, unlock()으로 다시 풀 수 있게 함
+function reviewAnswer(item, { onRight, onWrong, onEmpty }) {
+  let el;
+  let get;
+  const lock = (on) => el.querySelectorAll('button').forEach((b) => { b.disabled = on; });
+  const judge = (v) => {
+    if (v == null) { onEmpty(); return; }
+    if (v === item.answer) { lock(true); onRight(); return; }
+    onWrong(item.choices ? 'no' : v > item.answer ? 'more' : 'less');
+  };
+  if (item.choices) {
+    el = h('div', { class: 'choice-list' }, ...item.choices.map((c, i) => h('button', { class: 'choice-btn', onclick: () => judge(i) }, c)));
+    return { el, buttons: [], lock, judge };
+  }
+  const pad = keypad(item.unit);
+  el = pad.el;
+  get = pad.get;
+  const check = h('button', { class: 'btn primary', onclick: () => judge(get()) }, '확인');
+  return { el, buttons: [check], lock, judge, check };
 }
 
 async function renderGallery() {
@@ -355,11 +372,13 @@ async function renderKitchen() {
 async function renderClue(stageMeta, afterResult) {
   const mod = (await stageMeta.load()).default;
   if (!mod.clue.hash) throw new Error('이 회차 암호는 아직 준비 중인 거지. 나중에 다시 오는 거지.');
+  const who = hostFor(stageMeta.week);
+  const L = LINES[who];
   const already = await store.hasClue(mod.clue.id);
   const backLabel = afterResult ? '휴게소로' : '부엌으로';
   const goBack = () => guard(afterResult ? renderHub : renderKitchen);
   const input = h('input', { id: 'clue', autocomplete: 'off' });
-  const note = h('div', { class: 'talk' }, bubble('kkam', already ? '이 단서는 이미 도감에 있는 거지.' : mod.clue.ask));
+  const note = h('div', { class: 'talk' }, bubble(who, already ? L.clueAlready : mod.clue.ask));
   const submitBtn = h('button', { class: 'btn primary', type: 'submit' }, '확인');
   let bar = statusBar();
 
@@ -367,21 +386,21 @@ async function renderClue(stageMeta, afterResult) {
     class: 'clue-form',
     onsubmit: async (e) => {
       e.preventDefault();
-      const wrong = () => note.replaceChildren(bubble('kkam', '음… 그 암호는 아닌 거지. 영상을 다시 보고 와도 되는 거지.'));
+      const wrong = () => note.replaceChildren(bubble(who, L.clueWrong));
       const typed = normalize(input.value);
       if (!typed || await clueHash(typed) !== mod.clue.hash) { wrong(); return; }
       submitBtn.disabled = true;
       let res;
       try { res = await store.collectClue(profile, mod.clue.id, typed); } catch (err) {
-        note.replaceChildren(bubble('kkam', err.message)); submitBtn.disabled = false; return;
+        note.replaceChildren(bubble(who, err.message)); submitBtn.disabled = false; return;
       }
       if (!res.ok) { wrong(); submitBtn.disabled = false; return; }
       profile = res.profile;
       if (res.isNew) {
-        note.replaceChildren(bubble('kkam', `푸흡. 단서 카드 획득. 경험치 +${res.gained}인 거지.`));
+        note.replaceChildren(bubble(who, L.clueGot(res.gained)));
         const fresh = statusBar(); bar.replaceWith(fresh); bar = fresh;
       } else {
-        note.replaceChildren(bubble('kkam', '이미 가진 단서인 거지.'));
+        note.replaceChildren(bubble(who, L.clueHave));
       }
       // 맞힌 뒤에는 확인 버튼을 다음 화면으로 가는 버튼으로 바꿈
       input.disabled = true;
@@ -424,85 +443,80 @@ async function renderReview(review) {
   if (!questions.length) throw new Error('이 복습 문제는 아직 준비 중인 거지. 나중에 다시 오는 거지.');
   const { meta } = found;
   const item = questions[Math.floor(Math.random() * questions.length)];
+  const who = hostFor(meta.week);
+  const L = LINES[who];
+  // 3지선다는 두 번이면 답이 좁혀져서 한 번만, 숫자 답은 두 번까지
+  const maxTries = item.choices ? 1 : REVIEW_TRIES;
 
   let tries = 0;
   let hintStep = 0;
   let practice = false;
 
-  const talk = h('div', { class: 'talk' }, bubble('kkam', `${meta.week}회차 복습인 거지. 천천히 생각해도 되는 거지.`));
-  const say = (text) => talk.replaceChildren(bubble('kkam', text));
-  const input = h('input', { id: 'review-answer', type: 'text', inputmode: 'numeric', autocomplete: 'off', class: 'review-input' });
+  const talk = h('div', { class: 'talk' }, bubble(who, L.reviewIntro(meta.week)));
+  const say = (text) => talk.replaceChildren(bubble(who, text));
   const hintBtn = h('button', { class: 'btn ghost', type: 'button', disabled: true, onclick: showHint }, '힌트 보기');
-  const sendBtn = h('button', { class: 'btn primary', type: 'submit' }, '정답 확인');
-  const actions = h('div', { class: 'actions' }, hintBtn, sendBtn);
+  const actions = h('div', { class: 'actions' });
 
   function showHint() {
-    if (hintStep >= item.hints.length) { say('힌트는 다 말한 거지. 이제 네 차례.'); return; }
+    if (hintStep >= item.hints.length) { say(L.noMore); return; }
     say(item.hints[hintStep]);
     hintStep += 1;
   }
 
   function endButtons(extra) {
-    input.disabled = true;
+    answer.lock(true);
     actions.replaceChildren(
       extra || '',
       h('button', { class: 'btn primary', type: 'button', onclick: () => guard(renderHub) }, '휴게소로'));
   }
 
-  const form = h('form', {
-    class: 'review-form',
-    onsubmit: (e) => {
-      e.preventDefault();
-      guard(async () => {
-        const value = Number(input.value.replace(/[^0-9]/g, ''));
-        if (!input.value.trim() || Number.isNaN(value)) { say('숫자로 적어 주는 거지.'); return; }
-        tries += 1;
-        if (value === item.answer) {
-          if (practice) { say(`푸흡. ${item.answer}${item.unit}, 맞는 거지. 연습이라 경험치는 없는 거지.`); endButtons(); return; }
-          sendBtn.disabled = true;
-          const res = await store.answerReview(profile, review.id, true, meta.id);
-          profile = res.profile;
-          say(`푸흡. 기억하고 있는 거지. 경험치 +${res.gained}.${res.levelUp ? ` 레벨 업, Lv.${profile.level}인 거지.` : ''}`);
-          endButtons();
-          return;
-        }
-        const dir = value > item.answer ? '음… 너무 많은 거지.' : '음… 조금 모자란 거지.';
-        if (practice || tries < REVIEW_TRIES) {
-          hintBtn.disabled = false;
-          say(`${dir} 한 번 더. 힌트를 봐도 괜찮은 거지.`);
-          input.select();
-          return;
-        }
-        sendBtn.disabled = true;
-        profile = (await store.answerReview(profile, review.id, false, meta.id)).profile;
-        say(`${dir} 괜찮은 거지. 복습은 잊은 걸 다시 꺼내 보는 연습인 거지.`);
-        endButtons(h('button', {
-          class: 'btn ghost', type: 'button',
-          onclick: () => {
-            practice = true; tries = 0; input.disabled = false; input.value = '';
-            hintBtn.disabled = false;
-            actions.replaceChildren(hintBtn, sendBtn); sendBtn.disabled = false;
-            say('연습으로 한 번 더 푸는 거지.'); input.focus();
-          },
-        }, '연습으로 다시 풀기'));
-      });
-    },
-  },
-  h('p', { class: 'ask' }, item.q),
-  h('label', { for: 'review-answer', class: 'review-label' }, h('span', {}, '답'), input, h('span', {}, item.unit)),
-  actions);
+  const shown = () => (item.choices ? item.choices[item.answer] : `${item.answer}${item.unit}`);
+  const answer = reviewAnswer(item, {
+    onEmpty: () => say(item.choices ? L.pickFirst : L.typeFirst),
+    onRight: () => guard(async () => {
+      tries += 1;
+      if (practice) { say(`${shown()}. ${L.practiceOk}`); endButtons(); return; }
+      const res = await store.answerReview(profile, review.id, true, meta.id);
+      profile = res.profile;
+      say(`${L.reviewOk(res.gained)}${res.levelUp ? ` Lv.${profile.level}!` : ''}`);
+      endButtons();
+    }),
+    onWrong: (d) => guard(async () => {
+      tries += 1;
+      const dir = d === 'more' ? L.tooMany : d === 'less' ? L.tooFew : L.notIt;
+      if (practice || tries < maxTries) {
+        hintBtn.disabled = false;
+        say(`${dir} ${L.reviewAgain}`);
+        return;
+      }
+      answer.lock(true);
+      profile = (await store.answerReview(profile, review.id, false, meta.id)).profile;
+      say(`${dir} ${L.reviewEnd}`);
+      endButtons(h('button', {
+        class: 'btn ghost', type: 'button',
+        onclick: () => {
+          practice = true; tries = 0;
+          answer.lock(false); hintBtn.disabled = false;
+          actions.replaceChildren(hintBtn, ...answer.buttons);
+          say(L.practiceAgain);
+        },
+      }, '연습으로 다시 풀기'));
+    }),
+  });
+  actions.replaceChildren(hintBtn, ...answer.buttons);
 
   root.replaceChildren(
     statusBar(),
     h('div', { class: 'stage-holder' },
-      h('section', { class: 'stage' },
+      h('section', { class: 'stage review-form' },
         h('header', { class: 'stage-head' },
           h('button', { class: 'link', onclick: () => guard(renderHub) }, '휴게소로'),
           h('span', { class: 'stage-step' }, '복습 퀴즈')),
         h('h2', {}, `${meta.week}회차 복습: ${meta.subject}`),
         talk,
-        form)));
-  input.focus();
+        h('p', { class: 'ask' }, item.q),
+        answer.el,
+        actions)));
 }
 
 // ---------- 내 프로필 (아바타 꾸미기·닉네임) ----------
@@ -620,6 +634,7 @@ async function completeStage(meta, mod, result) {
   profile = res.profile;
   const firstClear = res.first;
   const teamHelped = res.first;
+  const who = hostFor(meta.week);
 
   root.replaceChildren(
     statusBar(),
@@ -631,9 +646,9 @@ async function completeStage(meta, mod, result) {
       firstClear
         ? h('ul', { class: 'xp-list' }, ...res.rows.map((r) =>
           h('li', {}, h('span', {}, XP_LABEL[r.source]), h('strong', {}, `+${r.amount}`))))
-        : bubble('kkam', '다시 해 본 거지. 경험치는 처음 한 번만 주는 거지. 그래도 연습은 남는 거지.'),
+        : bubble(who, LINES[who].retry),
       teamHelped ? h('p', { class: 'small muted' }, '부엌 공동 목표가 한 칸 찼어요.') : null,
-      bubble('kkam', '영상에서 암호를 찾았다면 입력해 보는 거지.'),
+      bubble(who, LINES[who].findClue),
       h('div', { class: 'actions' },
         h('button', { class: 'btn ghost', onclick: () => guard(renderHub) }, '휴게소로'),
         h('button', { class: 'btn primary', onclick: () => guard(() => renderClue(meta, true)) }, '암호 입력'))));
