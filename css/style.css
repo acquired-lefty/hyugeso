@@ -166,6 +166,24 @@ input {
 .chip-10 { background: var(--mint); }
 .chip-1 { background: var(--sodium); }
 
+/* 3회차: 나눠 담기·몫과 나머지 */
+.tray { display: grid; gap: 6px; padding: 10px 12px; background: #E9DDC2; border-radius: 12px; border-bottom: 6px solid #B8946A; }
+.tray-name, .plate-name { font-size: 14px; font-weight: 700; color: #8A6A33; }
+.tray-cookies, .plate-cookies { display: flex; flex-wrap: wrap; gap: 4px; min-height: 22px; }
+.plates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.plate { display: grid; gap: 6px; justify-items: center; padding: 10px 6px; background: #fff; border: 3px solid #E6DCC6; border-radius: 50% / 40%; min-height: 96px; align-content: center; }
+.plate-cookies { justify-content: center; max-width: 90px; }
+.cookie { width: 18px; height: 18px; border-radius: 50%; background: var(--kraft); border: 2px solid #7A5A2E; box-shadow: inset 4px 4px 0 -2px #5A3A1E; }
+.div-eq { font-family: var(--serif); font-size: 28px; font-weight: 700; text-align: center; margin: 12px 0 6px; white-space: nowrap; }
+.steppers { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.stepper { display: grid; gap: 6px; justify-items: center; padding: 10px 12px; background: #fff; border: 2px solid #E6DCC6; border-radius: 14px; }
+.step-label { font-weight: 700; }
+.step-row { display: flex; align-items: center; gap: 8px; }
+.step-btn { width: 56px; height: 56px; border-radius: 14px; border: 0; font: inherit; font-size: 30px; font-weight: 700; line-height: 1; background: var(--mint); color: var(--ink); cursor: pointer; box-shadow: 0 3px 0 #3E8F82; }
+.step-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #3E8F82; }
+.step-btn:disabled { opacity: .5; cursor: default; }
+.step-val { min-width: 48px; text-align: center; font-family: var(--serif); font-size: 34px; font-weight: 700; }
+
 /* ---------- 결과 ---------- */
 .result h2 { color: var(--sodium); }
 .levelup {
@@ -314,6 +332,7 @@ textarea {
   .weeks { grid-template-columns: 1fr 1fr; }
   .sort-list { grid-template-columns: 1fr 1fr; }
   .pick-grid { grid-template-columns: repeat(4, 1fr); }
+  .plates { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .profile-grid { grid-template-columns: auto 1fr; align-items: start; }
   .setting-inputs { grid-template-columns: 170px 1fr auto; align-items: center; }
   .clue-grid { grid-template-columns: repeat(3, 1fr); }
@@ -346,5 +365,5 @@ textarea {
 
 @media (prefers-reduced-motion: reduce) {
   .flicker, .char-kkam .eyes { animation: none; }
-  .btn.primary:active, .box:active .box-art { transform: none; }
+  .btn.primary:active, .box:active .box-art, .step-btn:active:not(:disabled) { transform: none; }
 }
