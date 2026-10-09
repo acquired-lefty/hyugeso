@@ -13,6 +13,10 @@ const writeDemo = (db) => {
   try { localStorage.setItem(DEMO_KEY, JSON.stringify(db)); } catch { /* 저장 불가 환경 */ }
 };
 
+// 서버 함수가 아직 없을 때 (새 SQL 실행 전)
+const missingFn = (error) => error && (error.code === 'PGRST202' || /could not find the function/i.test(error.message || ''));
+const NOT_OPEN = '아직 공개 전인 회차예요. 공개 날짜에 다시 와 주세요.';
+
 function check(error, message) {
   if (error) {
     console.error(error);
@@ -166,6 +170,7 @@ export const store = {
       const { data, error } = await sb.rpc('complete_stage', {
         p_stage: stageId, p_concept: conceptId, p_attempts: attempts, p_hints: hints, p_bonus: !!bonus,
       });
+      if (error && /not open/.test(error.message)) throw new Error(NOT_OPEN);
       check(error);
       return { first: data.first, ...fromServer(profile, data, data.rows) };
     }
@@ -182,17 +187,22 @@ export const store = {
     return { first: true, ...demoGrant(db, profile, entries) };
   },
 
-  // 영상 단서: 처음 모을 때만 경험치
-  async collectClue(profile, clueId) {
+  // 영상 단서: 서버가 암호를 다시 확인하고(07_server_checks.sql), 처음 모을 때만 경험치
+  // { ok: false }면 서버 기준으로 틀린 암호
+  async collectClue(profile, clueId, word) {
     if (live) {
-      const { data, error } = await sb.rpc('collect_clue', { p_clue: clueId });
+      let { data, error } = await sb.rpc('collect_clue', { p_clue: clueId, p_answer: word });
+      // 07 SQL 실행 전: 예전 함수로 기록
+      if (missingFn(error)) ({ data, error } = await sb.rpc('collect_clue', { p_clue: clueId }));
+      if (error && /not open/.test(error.message)) throw new Error(NOT_OPEN);
       check(error);
-      return { isNew: data.new, ...fromServer(profile, data, data.new ? [{ source: 'clue', amount: data.gained }] : []) };
+      if (data.ok === false) return { ok: false };
+      return { ok: true, isNew: data.new, ...fromServer(profile, data, data.new ? [{ source: 'clue', amount: data.gained }] : []) };
     }
     const db = readDemo();
-    if (db.clues[clueId]) return { isNew: false, ...demoGrant(db, profile, []) };
-    db.clues[clueId] = new Date().toISOString();
-    return { isNew: true, ...demoGrant(db, profile, [{ source: 'clue', stageId: clueId }]) };
+    if (db.clues[clueId]) return { ok: true, isNew: false, ...demoGrant(db, profile, []) };
+    db.clues[clueId] = { at: new Date().toISOString(), word };
+    return { ok: true, isNew: true, ...demoGrant(db, profile, [{ source: 'clue', stageId: clueId }]) };
   },
 
   // 복습 퀴즈 답 기록: 정답이면 경험치
@@ -219,14 +229,16 @@ export const store = {
     return !!readDemo().clues?.[clueId];
   },
 
-  // 단서 도감: { 's1-w01': '모은 날짜', ... }
+  // 단서 도감: { 's1-w01': { at: '모은 날짜', word: '암호' }, ... } (word는 07 SQL 실행 후부터)
   async listClues() {
     if (live) {
-      const { data, error } = await sb.from('clues').select('clue_id, collected_at').eq('user_id', userId);
+      let { data, error } = await sb.from('clues').select('clue_id, collected_at, word').eq('user_id', userId);
+      if (error && /word/.test(error.message || '')) ({ data, error } = await sb.from('clues').select('clue_id, collected_at').eq('user_id', userId));
       check(error);
-      return Object.fromEntries((data || []).map((c) => [c.clue_id, c.collected_at]));
+      return Object.fromEntries((data || []).map((c) => [c.clue_id, { at: c.collected_at, word: c.word || '' }]));
     }
-    return { ...(readDemo().clues || {}) };
+    // 예전 체험 기록은 날짜만 있음
+    return Object.fromEntries(Object.entries(readDemo().clues || {}).map(([id, v]) => [id, typeof v === 'string' ? { at: v, word: '' } : v]));
   },
 
   // 복습할 때가 된(예정일이 지났고 아직 안 푼) 복습 퀴즈
@@ -337,7 +349,7 @@ export const store = {
     const db = readDemo();
     return {
       progress: Object.values(db.progress || {}).sort((a, b) => a.stage_id.localeCompare(b.stage_id)),
-      clues: Object.entries(db.clues || {}).map(([clue_id, collected_at]) => ({ clue_id, collected_at })),
+      clues: Object.entries(db.clues || {}).map(([clue_id, v]) => ({ clue_id, collected_at: v?.at || v, word: v?.word })),
       xpLog: [...(db.xpLog || [])].reverse().slice(0, 20),
       reviews: [...(db.reviews || [])].sort((a, b) => a.due_at.localeCompare(b.due_at)),
     };
@@ -417,13 +429,49 @@ export const store = {
     writeDemo(db);
   },
 
+  // 회차 암호 (서버 확인용, 07_server_checks.sql). 표가 없으면 null
+  async adminClueKeys() {
+    if (live) {
+      const { data, error } = await sb.from('clue_keys').select('*');
+      if (error) { console.error(error); return null; }
+      return Object.fromEntries((data || []).map((r) => [r.stage_id, r.answer]));
+    }
+    return { ...(readDemo().clueKeys || {}) };
+  },
+
+  // 암호를 비우고 저장하면 서버 암호를 지움
+  async adminSaveClueKey(stageId, answer) {
+    const a = (answer || '').replace(/\s+/g, '');
+    if (live) {
+      const res = a
+        ? await sb.from('clue_keys').upsert({ stage_id: stageId, answer: a, updated_at: new Date().toISOString() })
+        : await sb.from('clue_keys').delete().eq('stage_id', stageId);
+      check(res.error, '암호를 저장하지 못했어요. 07_server_checks.sql을 실행했는지 확인해 주세요.');
+      return;
+    }
+    const db = readDemo(); db.clueKeys = db.clueKeys || {};
+    if (a) db.clueKeys[stageId] = a; else delete db.clueKeys[stageId];
+    writeDemo(db);
+  },
+
+  // 아이 계정 비밀번호 새로 정하기 (가짜 이메일이라 메일 재설정이 안 됨)
+  async adminSetPassword(childId, password) {
+    if (!password || password.length < 6) throw new Error('비밀번호는 6글자 이상으로 정해 주세요.');
+    if (!live) throw new Error('체험 모드에는 비밀번호가 없어요.');
+    const { error } = await sb.rpc('admin_set_password', { p_user: childId, p_password: password });
+    if (missingFn(error)) throw new Error('07_server_checks.sql을 먼저 실행해 주세요.');
+    if (error && /not for admin/.test(error.message)) throw new Error('관리자 계정 비밀번호는 여기서 바꿀 수 없어요.');
+    check(error, '비밀번호를 바꾸지 못했어요.');
+  },
+
   // 기록 내보내기(백업): 모든 표를 한 파일로 (실제 모드는 관리자 계정만 전체가 읽힘)
   async adminExport() {
     if (live) {
       const tables = ['profiles', 'progress', 'xp_log', 'clues', 'review_quiz', 'team_goals', 'admin_notes', 'stage_settings', 'learning_summary'];
       const results = await Promise.all(tables.map((t) => sb.from(t).select('*')));
       results.forEach((r) => check(r.error, '기록을 내보내지 못했어요.'));
-      return Object.fromEntries(tables.map((t, i) => [t, results[i].data || []]));
+      const keys = await sb.from('clue_keys').select('*'); // 07 SQL 실행 전에는 없음
+      return { ...Object.fromEntries(tables.map((t, i) => [t, results[i].data || []])), clue_keys: keys.data || [] };
     }
     return { demo: readDemo() };
   },

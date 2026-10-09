@@ -48,11 +48,12 @@ const REVIEW = [
     hints: ['백, 십, 일 자리로 나눠서 곱하는 거지.', '100×3, 20×3, 5×3을 따로 구해서 더하는 거지.'] },
 ];
 
+// 암호는 화면 코드에 두지 않고 지문(SHA-256)만 둔다. 실제 암호: CLAUDE.md·tests/clue-answers.json, 서버는 clue_keys 표
 export default {
   id: 's1-w01',
   conceptId: 'math-mul-01',
   review: REVIEW,
-  clue: { id: 's1-w01', answer: '빠른덧셈', ask: '영상에서 규리사가 알려 준 창고 암호는?' },
+  clue: { id: 's1-w01', hash: 'e61af3621c380371ed62e7184aed845db6fc3f80a96087bed093c2797fe4838b', ask: '영상에서 규리사가 알려 준 창고 암호는?' },
   stage: STAGE,
   mount(root, ctx) { mountStage(root, this.stage, ctx); },
 };

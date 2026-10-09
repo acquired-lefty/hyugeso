@@ -1,5 +1,5 @@
 import { store, STATUS_MESSAGE } from './store.js';
-import { h, bubble, normalize } from './ui.js';
+import { h, bubble, normalize, clueHash } from './ui.js';
 import { sceneSvg } from './scene.js';
 import { levelProgress, XP_LABEL } from './xp.js';
 import { SEASON1, TEAM_GOAL_ID, CLUE_TOTAL, stageStatus, opensLabel } from './stages/index.js';
@@ -186,14 +186,13 @@ async function renderHub() {
 async function renderClueBook() {
   const clues = await store.listClues();
   const day = (iso) => new Date(iso).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' });
-  const cards = await Promise.all(SEASON1.map(async (s) => {
+  const cards = SEASON1.map((s) => {
     const got = clues[s.id];
-    const answer = got && s.load ? (await s.load()).default.clue.answer : '';
     return h('li', { class: `clue-card ${got ? 'is-got' : ''}` },
       h('span', { class: 'clue-week' }, `${s.week}회`),
-      h('strong', { class: 'clue-word' }, got ? answer : '?'),
-      h('span', { class: 'small muted' }, got ? `${day(got)} 발견` : s.title));
-  }));
+      h('strong', { class: 'clue-word' }, got ? got.word || '✓' : '?'),
+      h('span', { class: 'small muted' }, got ? `${day(got.at)} 발견` : s.title));
+  });
   const count = Object.keys(clues).length;
 
   root.replaceChildren(
@@ -257,12 +256,15 @@ async function renderClue(stageMeta, afterResult) {
     class: 'clue-form',
     onsubmit: async (e) => {
       e.preventDefault();
-      if (normalize(input.value) !== normalize(mod.clue.answer)) {
-        note.replaceChildren(bubble('kkam', '음… 그 암호는 아닌 거지. 영상을 다시 보고 와도 되는 거지.'));
-        return;
-      }
+      const wrong = () => note.replaceChildren(bubble('kkam', '음… 그 암호는 아닌 거지. 영상을 다시 보고 와도 되는 거지.'));
+      const typed = normalize(input.value);
+      if (!typed || await clueHash(typed) !== mod.clue.hash) { wrong(); return; }
       submitBtn.disabled = true;
-      const res = await store.collectClue(profile, mod.clue.id);
+      let res;
+      try { res = await store.collectClue(profile, mod.clue.id, typed); } catch (err) {
+        note.replaceChildren(bubble('kkam', err.message)); submitBtn.disabled = false; return;
+      }
+      if (!res.ok) { wrong(); submitBtn.disabled = false; return; }
       profile = res.profile;
       if (res.isNew) {
         note.replaceChildren(bubble('kkam', `푸흡. 단서 카드 획득. 경험치 +${res.gained}인 거지.`));

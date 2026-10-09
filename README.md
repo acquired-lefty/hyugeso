@@ -10,7 +10,7 @@
 
 ## 2. 실제 저장 켜기 (Supabase)
 1. supabase.com → New project (Region: Seoul).
-2. SQL Editor에서 `supabase/01_schema.sql` 실행 → 이어서 `supabase/02_setup.sql` → `supabase/03_protect_summary.sql` → `supabase/04_admin_notes.sql` → `supabase/05_server_xp.sql` → `supabase/06_signup_profile.sql` 순서로 실행.
+2. SQL Editor에서 `supabase/01_schema.sql` 실행 → 이어서 `supabase/02_setup.sql` → `supabase/03_protect_summary.sql` → `supabase/04_admin_notes.sql` → `supabase/05_server_xp.sql` → `supabase/06_signup_profile.sql` → `supabase/07_server_checks.sql` 순서로 실행.
 3. Authentication → Sign In / Providers → Email → **Confirm email 끄기**.
 4. Project Settings → API에서 Project URL과 anon public key 복사.
 5. `js/config.js`의 `SUPABASE_URL`, `SUPABASE_ANON_KEY`에 붙여넣고 저장소에 반영.
@@ -20,6 +20,7 @@
 2. 아이(또는 어른)는 로그인 화면의 **가입 신청하기**에서 아이디·비밀번호만으로 신청합니다.
 3. 대표님은 대시보드 **가입 신청** 칸에서 승인·거절합니다. 어린이(만 14세 미만)는 보호자께 직접 동의를 확인한 뒤 **보호자 동의 확인함**에 체크해야 승인됩니다.
 4. 닉네임을 바꾸면 대시보드 **닉네임 승인** 칸에 올라옵니다.
+5. 비밀번호를 잊은 아이는 대시보드 **비밀번호를 잊은 아이가 있나요?**에서 새 비밀번호를 정해 줍니다.
 
 ## 3-1. 아이디 직접 발급 (예전 방식, 필요할 때만)
 1. Authentication → Users → Add user → Create new user.
@@ -36,7 +37,7 @@
 
 ## 5. 영상 암호 맞추기
 회차별 암호 (띄어쓰기 무시): 1회차 `빠른덧셈`, 2회차 `자리차지`, 3회차 `남은하루`. 영상 대본에 이 암호가 나오도록 맞춥니다.
-바꾸려면 `js/stages/s1-wNN.js`의 `clue.answer`를 수정합니다.
+게임 코드에는 암호의 지문(`clue.hash`)만 들어가고, 서버는 대시보드 **회차 설정**의 암호 칸 값으로 다시 확인합니다. 새 회차는 암호 칸에 넣고 "✓ 게임과 같음"을 확인해 주세요.
 
 ## 6. 학습 대시보드
 사이트 주소 뒤에 `admin.html`을 붙여 접속합니다 (예: `https://acquired-lefty.github.io/hyugeso/admin.html`).

@@ -2,7 +2,13 @@
 // 각 회차 파일의 stage 설정(정답 포함)을 읽어 문제 형태별로 자동으로 풀고,
 // 휴대폰·태블릿·PC 세 폭에서 가로 넘침, 화면 오류, 경험치 기록을 확인한다.
 // 실행: python3 -m http.server 8000 & node tests/e2e.mjs   (BASE 환경변수로 주소 변경)
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { SEASON1 } from '../js/stages/index.js';
+
+// 영상 암호 (화면 코드에는 지문만 있음)
+const ANSWERS = JSON.parse(readFileSync(new URL('./clue-answers.json', import.meta.url), 'utf8'));
+const hashOf = (w) => createHash('sha256').update(w.replace(/\s+/g, '').toLowerCase(), 'utf8').digest('hex');
 
 const { chromium } = await import(process.env.PW_MODULE || 'playwright');
 const BASE = process.env.BASE || 'http://localhost:8000/';
@@ -95,7 +101,13 @@ async function checkOverflow(p, w, tag) {
 
 const browser = await chromium.launch();
 const stages = [];
-for (const meta of SEASON1.filter((s) => s.open && s.load)) stages.push({ meta, mod: (await meta.load()).default });
+for (const meta of SEASON1.filter((s) => s.open && s.load)) {
+  const mod = (await meta.load()).default;
+  const answer = ANSWERS[meta.id];
+  if (!answer) fail(`${meta.id}: tests/clue-answers.json에 암호가 없음`);
+  else if (hashOf(answer) !== mod.clue.hash) fail(`${meta.id}: 회차 파일의 clue.hash가 암호 '${answer}'와 맞지 않음`);
+  stages.push({ meta, mod, answer: answer || '' });
+}
 
 for (const [name, w] of WIDTHS) {
   const full = name === 'mobile';
@@ -112,7 +124,7 @@ for (const [name, w] of WIDTHS) {
   await p.click('text=휴게소 들어가기');
   await p.waitForSelector('.scene');
 
-  for (const { meta, mod } of stages) {
+  for (const { meta, mod, answer } of stages) {
     const tag = `${name}/${meta.id}`;
     try {
       await p.click('[data-door="kitchen"]');
@@ -133,7 +145,10 @@ for (const [name, w] of WIDTHS) {
       await p.waitForSelector('.result');
       if (SHOTS) await p.screenshot({ path: `${SHOTS}/${name}-${meta.id}-result.png`, fullPage: true });
       await p.click('.result >> text=암호 입력');
-      await p.fill('#clue', mod.clue.answer);
+      await p.fill('#clue', '틀린 암호');
+      await p.click('.clue-form button:text-is("확인")');
+      if (!/아닌 거지/.test(await p.locator('.talk p').innerText())) fail(`${tag}: 틀린 암호가 통과됨`);
+      await p.fill('#clue', ` ${answer.slice(0, 2)} ${answer.slice(2)} `); // 띄어쓰기는 무시되어야 함
       await p.click('.clue-form button:text-is("확인")');
       const said = await p.locator('.talk p').innerText();
       if (!/단서 카드 획득/.test(said)) fail(`${tag}: 암호 입력 실패 (${said})`);
@@ -145,6 +160,11 @@ for (const [name, w] of WIDTHS) {
       if (log !== expect) fail(`${tag}: 경험치 기록 ${log} (기대 ${expect})`);
       if (!db.progress[meta.id]?.cleared) fail(`${tag}: 클리어 기록 없음`);
       await p.click('.clue-form button:text-is("휴게소로")');
+      await p.waitForSelector('.scene');
+      await p.click('.strip-link');
+      const card = p.locator('.clue-card').nth(SEASON1.indexOf(meta));
+      if ((await card.locator('.clue-word').innerText()) !== answer.replace(/\s+/g, '')) fail(`${tag}: 단서 도감에 암호가 안 보임`);
+      await p.click('.clue-book button:text-is("휴게소로")');
       await p.waitForSelector('.scene');
       console.log(`ok  ${tag}`);
     } catch (err) {

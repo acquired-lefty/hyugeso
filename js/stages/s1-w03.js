@@ -82,11 +82,12 @@ const REVIEW = [
     hints: ['검산을 떠올리는 거지. (나누는 수) × (몫) + (나머지).', '3 × 5를 먼저 하고, 2를 더해 보는 거지.'] },
 ];
 
+// 암호는 화면 코드에 두지 않고 지문(SHA-256)만 둔다. 실제 암호: CLAUDE.md·tests/clue-answers.json, 서버는 clue_keys 표
 export default {
   id: 's1-w03',
   conceptId: 'math-div-01',
   review: REVIEW,
-  clue: { id: 's1-w03', answer: '남은하루', ask: '영상에서 오븐 문에 적힌 암호는?' },
+  clue: { id: 's1-w03', hash: '42193f4068a9c49434b2ce0c68e4d91451f8091f4b6a26608ffd61bd886f6a8b', ask: '영상에서 오븐 문에 적힌 암호는?' },
   stage: {
     episode: '3회차',
     title: '쿠키 공평하게 나누기',

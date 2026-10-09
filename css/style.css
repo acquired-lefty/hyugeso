@@ -248,7 +248,9 @@ input {
 .account-row { display: grid; gap: 8px; }
 .setting-row { display: grid; gap: 4px; }
 .setting-inputs { display: grid; grid-template-columns: 1fr; gap: 6px; }
-.setting-inputs input { padding: 8px 10px; }
+.setting-inputs input, .setting-inputs select { padding: 8px 10px; }
+.pw-inputs { margin-top: 8px; }
+.setting-inputs select { font: inherit; border-radius: 12px; border: 2px solid var(--dim); background: var(--paper); color: var(--ink); min-height: 44px; }
 .admin h3 { font-size: 18px; margin: 14px 0 8px; }
 
 /* ---------- 2회차: 고체·액체·기체 나누기 ---------- */
@@ -341,7 +343,8 @@ textarea {
   .pick-grid { grid-template-columns: repeat(4, 1fr); }
   .plates { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .profile-grid { grid-template-columns: auto 1fr; align-items: start; }
-  .setting-inputs { grid-template-columns: 170px 1fr auto; align-items: center; }
+  .setting-inputs { grid-template-columns: 170px 1fr 130px auto; align-items: center; }
+  .setting-inputs.pw-inputs { grid-template-columns: 1fr 1fr auto; }
   .clue-grid { grid-template-columns: repeat(3, 1fr); }
   .bubble-face { flex-basis: 64px; }
   .bubble-face .char { width: 64px; height: 80px; }
