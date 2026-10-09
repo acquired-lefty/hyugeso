@@ -9,7 +9,7 @@ export const CLUE_TOTAL = 12;
 export const SEASON1 = [
   { id: 's1-w01', week: 1, title: '휴게소 첫날, 레시피 3배로!', subject: '수학: 곱셈', open: true, load: () => import('./s1-w01.js') },
   { id: 's1-w02', week: 2, title: '냉동고의 빈 병', subject: '과학: 물질의 상태', open: true, load: () => import('./s1-w02.js') },
-  { id: 's1-w03', week: 3, title: '쿠키 공평하게 나누기', subject: '수학: 나눗셈', opensAt: '2026-10-12', open: false },
+  { id: 's1-w03', week: 3, title: '쿠키 공평하게 나누기', subject: '수학: 나눗셈', opensAt: '2026-10-12', open: true, load: () => import('./s1-w03.js') },
   { id: 's1-w04', week: 4, title: '주방 소리 추리', subject: '과학: 소리', opensAt: '2026-10-15', open: false },
   { id: 's1-w05', week: 5, title: '완벽한 팬케이크의 비밀', subject: '수학: 원', opensAt: '2026-10-19', open: false },
   { id: 's1-w06', week: 6, title: '중간 미션: 메뉴 가격표', subject: '통합: 수학과 경제', opensAt: '2026-10-22', open: false },
