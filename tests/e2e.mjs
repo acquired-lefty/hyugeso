@@ -65,7 +65,17 @@ const SOLVE = {
     await clickText(p, '확인');
   },
   async fill(p, s) { await setStepper(p, '□', s.answer); await clickText(p, '확인'); },
+  async number(p, s) {
+    const q = await p.locator('.stage .ask').innerText();
+    const item = s.pool.find((x) => x.q === q);
+    await pressNumber(p, item.answer);
+    await clickText(p, '확인');
+  },
 };
+
+async function pressNumber(p, n) {
+  for (const d of String(n)) await p.locator(`.pad-key[aria-label="${d}"]`).click();
+}
 
 // 오답 하나를 내 보고 피드백이 나오는지 확인 (고르기 형태만)
 async function tryWrong(p, s, tag) {
@@ -173,9 +183,80 @@ for (const [name, w] of WIDTHS) {
       await p.goto(BASE); await p.waitForSelector('.scene');
     }
   }
+  if (full) await extraChecks(p, w);
   await p.close();
 }
 await browser.close();
+
+// 만드는 중인 회차(load는 있고 open: false)와 2층·지하 화면 (휴대폰 폭에서 한 번)
+async function extraChecks(p, w) {
+  const draft = SEASON1.filter((s) => !s.open && s.load);
+  for (const meta of draft) {
+    const tag = `draft/${meta.id}`;
+    try {
+      const mod = (await meta.load()).default;
+      // 12회차 자물쇠는 모든 단서가 있어야 열림 → 체험 기록에 단서를 채워 둠
+      await p.evaluate((ids) => {
+        const db = JSON.parse(localStorage.getItem('hyugeso-demo-v1'));
+        for (const id of ids) if (!db.clues[id]) db.clues[id] = { at: new Date().toISOString(), word: `단서${id.slice(-2)}` };
+        localStorage.setItem('hyugeso-demo-v1', JSON.stringify(db));
+      }, mod.id === 's1-w12' ? SEASON1.map((s) => s.id) : []);
+      await p.evaluate(async (id) => {
+        const m = (await import(`./js/stages/${id}.js`)).default;
+        const app = document.getElementById('app');
+        app.replaceChildren(); window.__done = null;
+        m.mount(app, { finish: (r) => { window.__done = r; }, exit: () => {} });
+      }, meta.id);
+      if (mod.id === 's1-w12') {
+        await p.waitForSelector('.locks');
+        const open = await p.locator('.lock.is-open').count();
+        if (open !== SEASON1.length) fail(`${tag}: 열린 자물쇠 ${open}개`);
+        await checkOverflow(p, w, `${tag}/locks`);
+        await clickText(p, '지하 문 열기');
+      }
+      await clickText(p, mod.stage.intro.start);
+      for (const [i, r] of mod.stage.rounds.entries()) {
+        await playRound(p, r, `${tag}/r${i + 1}`, { useHint: {}, wrong: true });
+        await checkOverflow(p, w, `${tag}/r${i + 1}`);
+      }
+      if (mod.stage.bonus) { await clickText(p, '도전하기'); await playRound(p, mod.stage.bonus, `${tag}/bonus`, { useHint: {} }); }
+      const done = await p.evaluate(() => window.__done);
+      if (!done || done.bonus !== !!mod.stage.bonus) fail(`${tag}: 끝까지 가지 못함 ${JSON.stringify(done)}`);
+      console.log(`ok  ${tag}`);
+    } catch (err) { fail(`${tag}: ${err.message.split('\n')[0]}`); }
+  }
+
+  // 2층: 6회차 클리어 기록을 넣고 복습실·전시실 확인
+  try {
+    await p.evaluate(() => {
+      const db = JSON.parse(localStorage.getItem('hyugeso-demo-v1'));
+      db.progress['s1-w06'] = { stage_id: 's1-w06', cleared: true, attempts: 1, hints_used: 0, cleared_at: new Date().toISOString() };
+      localStorage.setItem('hyugeso-demo-v1', JSON.stringify(db));
+    });
+    await p.goto(BASE); await p.waitForSelector('.scene');
+    await p.click('[data-door="floor2"]');
+    await p.click('.room-btn:has-text("복습실")');
+    await p.locator('.gallery-item').first().locator('button').click();
+    const mod = (await SEASON1[0].load()).default;
+    const q = await p.locator('.stage .ask').innerText(); // 문제는 무작위라 화면에서 읽음
+    const it = mod.review.find((x) => x.q === q);
+    await pressNumber(p, it.answer + 1);
+    await clickText(p, '확인');
+    if (!/너무 많은/.test(await p.locator('.talk p').innerText())) fail('floor2: 연습 오답 피드백 없음');
+    await clickText(p, '⌫'); await clickText(p, '지우기');
+    await pressNumber(p, it.answer);
+    await clickText(p, '확인');
+    if (!/맞는 거지/.test(await p.locator('.talk p').innerText())) fail('floor2: 연습 정답 처리 안 됨');
+    await checkOverflow(p, w, 'floor2/practice');
+    await p.click('.actions button:text-is("복습실로")');
+    await p.click('button:text-is("2층으로")');
+    await p.click('.room-btn:has-text("단서 전시실")');
+    const words = await p.locator('.gallery .clue-word').allInnerTexts();
+    if (!words.includes(ANSWERS['s1-w01'])) fail(`floor2: 전시실에 단서가 안 보임 (${words.join(',')})`);
+    await checkOverflow(p, w, 'floor2/gallery');
+    console.log('ok  floor2');
+  } catch (err) { fail(`floor2: ${err.message.split('\n')[0]}`); }
+}
 
 if (errors.length) {
   console.error(`\n실패 ${errors.length}건\n${errors.join('\n')}`);
