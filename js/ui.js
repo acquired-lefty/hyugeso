@@ -39,3 +39,9 @@ export function josa(word, withFinal, withoutFinal) {
 }
 
 export const normalize = (s) => String(s).replace(/\s+/g, '').toLowerCase();
+
+// 영상 암호 지문: 띄어쓰기 무시·소문자로 바꾼 뒤 SHA-256 (회차 파일의 clue.hash와 비교)
+export async function clueHash(s) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(normalize(s)));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}

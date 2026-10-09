@@ -122,11 +122,12 @@ const REVIEW = [
     hints: ['공기가 컵 안 자리를 차지하고 있으면 물이 못 들어오는 거지.', '구멍 난 컵만 공기가 빠져나가는 거지. 4개에서 하나를 빼 보는 거지.'] },
 ];
 
+// 암호는 화면 코드에 두지 않고 지문(SHA-256)만 둔다. 실제 암호: CLAUDE.md·tests/clue-answers.json, 서버는 clue_keys 표
 export default {
   id: 's1-w02',
   conceptId: 'sci-state-01',
   review: REVIEW,
-  clue: { id: 's1-w02', answer: '자리차지', ask: '영상에서 냉동고 문에 적힌 암호는?' },
+  clue: { id: 's1-w02', hash: '819d6497cf66604d59332fca3ef61d87523381e042f3505038fe2d12b15128bc', ask: '영상에서 냉동고 문에 적힌 암호는?' },
   stage: STAGE,
   mount(root, ctx) { mountStage(root, this.stage, ctx); },
 };

@@ -2,7 +2,7 @@
 // 실제 모드: is_admin 계정만 들어올 수 있음. 아이들 기록 조회는 DB의 RLS 규칙이 관리자에게만 허용.
 // 체험 모드: 이 기기에 저장된 기록만 보여 줌.
 import { store } from './store.js';
-import { h } from './ui.js';
+import { h, clueHash } from './ui.js';
 import { XP_LABEL } from './xp.js';
 import { SEASON1, opensDate } from './stages/index.js';
 import { avatarSvg, normalizeAvatar } from './avatar.js';
@@ -129,15 +129,49 @@ async function accountsPanel(profile) {
           h('button', { class: 'btn primary small', onclick: act(() => store.adminReviewName(a.id, true)) }, '승인'),
           h('button', { class: 'btn ghost small', onclick: act(() => store.adminReviewName(a.id, false)) }, '거절')))))) : '',
     rejected.length ? h('details', { class: 'clue-video' }, h('summary', {}, `거절한 신청 ${rejected.length}건`),
-      h('ul', { class: 'admin-list' }, ...rejected.map(signupRow))) : '');
+      h('ul', { class: 'admin-list' }, ...rejected.map(signupRow))) : '',
+    passwordBox(accounts.filter((a) => a.status === 'approved')));
+}
+
+// 아이 계정 비밀번호 새로 정하기 (아이디가 가짜 이메일이라 메일 재설정이 안 됨)
+function passwordBox(approved) {
+  if (!approved.length) return '';
+  const pick = h('select', { id: 'pw-user', 'aria-label': '계정 고르기' },
+    ...approved.map((a) => h('option', { value: a.id }, a.display_name ? `${a.nickname} (${a.display_name})` : a.nickname)));
+  const pw = h('input', { id: 'pw-new', type: 'text', minlength: 6, maxlength: 40, autocomplete: 'off', placeholder: '새 비밀번호 (6글자 이상)' });
+  const msg = h('p', { class: 'form-note', role: 'status' });
+  const btn = h('button', {
+    class: 'btn ghost small',
+    onclick: async () => {
+      msg.textContent = '';
+      const name = pick.selectedOptions[0]?.textContent;
+      if (!confirm(`${name} 계정의 비밀번호를 바꿀까요?`)) return;
+      btn.disabled = true;
+      try {
+        await store.adminSetPassword(pick.value, pw.value.trim());
+        msg.textContent = `${name} 비밀번호를 바꿨어요. 아이에게 새 비밀번호를 알려 주세요.`;
+        pw.value = '';
+      } catch (err) { msg.textContent = err.message; } finally { btn.disabled = false; }
+    },
+  }, '비밀번호 바꾸기');
+  return h('details', { class: 'clue-video' }, h('summary', {}, '비밀번호를 잊은 아이가 있나요?'),
+    h('p', { class: 'small muted' }, '새 비밀번호를 정해 주면 바로 그 비밀번호로 들어올 수 있어요.'),
+    h('div', { class: 'setting-inputs pw-inputs' }, pick, pw, btn), msg);
 }
 
 // ---------- 회차 설정: 공개 날짜·유튜브 영상 주소 ----------
 async function settingsPanel(profile) {
-  const settings = await store.loadSettings();
+  const [settings, keys] = await Promise.all([store.loadSettings(), store.adminClueKeys()]);
+  const mods = Object.fromEntries(await Promise.all(SEASON1.filter((s) => s.open && s.load).map(async (s) => [s.id, (await s.load()).default])));
   const msg = h('p', { class: 'form-note', role: 'status' });
-  const rows = SEASON1.map((s) => {
+  const rows = await Promise.all(SEASON1.map(async (s) => {
     const cur = settings[s.id] || {};
+    const key = keys?.[s.id] || '';
+    const keyInput = h('input', { type: 'text', value: key, maxlength: 30, placeholder: '영상 암호', 'aria-label': `${s.week}회차 영상 암호` });
+    // 서버 암호가 게임 파일의 암호 지문과 같은지 표시
+    const hash = mods[s.id]?.clue.hash;
+    let keyState = keys == null ? '암호 칸을 쓰려면 07 SQL 실행 필요' : !key ? '서버 암호 미등록' : '';
+    if (key && hash) keyState = (await clueHash(key)) === hash ? '암호 ✓ 게임과 같음' : '⚠ 게임 파일의 암호와 다름';
     const date = h('input', { type: 'date', value: cur.opens_at || '', 'aria-label': `${s.week}회차 공개 날짜` });
     const url = h('input', { type: 'url', value: cur.video_url || '', placeholder: 'https://youtu.be/…', 'aria-label': `${s.week}회차 영상 주소` });
     const save = h('button', {
@@ -147,6 +181,7 @@ async function settingsPanel(profile) {
         if (url.value.trim() && !youtubeId(url.value.trim())) { msg.textContent = `${s.week}회차: 유튜브 영상 주소가 아니에요.`; return; }
         try {
           await store.adminSaveSetting(s.id, { opensAt: date.value, videoUrl: url.value.trim() });
+          if (keys != null && keyInput.value.trim() !== key) await store.adminSaveClueKey(s.id, keyInput.value);
           msg.textContent = `${s.week}회차 저장했어요.`;
           setTimeout(() => guard(() => renderSummary(profile)), 600);
         } catch (err) { msg.textContent = err.message; }
@@ -154,12 +189,13 @@ async function settingsPanel(profile) {
     }, '저장');
     return h('li', { class: 'setting-row' },
       h('strong', {}, `${s.week}회 ${s.title}`),
-      h('span', { class: 'small muted' }, `${s.open ? '' : '(게임 준비 중) '}공개: ${opensDate(s, settings) || '바로'}${cur.opens_at ? ' · 직접 지정' : s.opensAt ? ' · 기본 일정' : ''}`),
-      h('div', { class: 'setting-inputs' }, date, url, save));
-  });
+      h('span', { class: 'small muted' }, `${s.open ? '' : '(게임 준비 중) '}공개: ${opensDate(s, settings) || '바로'}${cur.opens_at ? ' · 직접 지정' : s.opensAt ? ' · 기본 일정' : ''}${keyState ? ` · ${keyState}` : ''}`),
+      h('div', { class: 'setting-inputs' }, date, url, keys == null ? '' : keyInput, save));
+  }));
   return h('section', { class: 'panel admin-section' },
     h('h2', {}, '회차 설정'),
     h('p', { class: 'small muted' }, '기본 공개 일정은 매주 월·목이에요. 날짜를 넣으면 그 날짜(한국 시간 0시)가 우선해요. 날짜를 비우고 저장하면 기본 일정으로 돌아가요.'),
+    h('p', { class: 'small muted' }, '영상 암호는 서버가 아이들의 입력을 확인할 때 써요. 새 회차는 게임과 같은 암호를 넣어 주세요(✓ 표시 확인).'),
     msg,
     h('ul', { class: 'admin-list' }, ...rows));
 }

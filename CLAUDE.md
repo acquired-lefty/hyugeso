@@ -6,14 +6,17 @@
 ## 역할 분담
 - 이 저장소(Claude Code): 웹게임, 대표님용 학습 대시보드, DB 변경
 - claude.ai 채팅: 영상 기획, 대본, Google Flow 프롬프트, 나레이션 (게임 코드는 다루지 않음)
-- 영상 속 단서(암호)는 채팅에서 대본과 함께 정해진다. 새 회차 작업 전 대표님께 그 회차 암호를 받아 `clue.answer`에 넣는다.
+- 영상 속 단서(암호)는 채팅에서 대본과 함께 정해진다. 새 회차 작업 전 대표님께 그 회차 암호를 받는다.
+  - 회차 파일에는 암호 대신 지문 `clue.hash`(띄어쓰기 빼고 소문자로 바꾼 뒤 SHA-256)만 넣고, 실제 암호는 `tests/clue-answers.json`에 적는다(자동 검사가 둘이 맞는지 확인).
+  - 서버 확인용 암호는 `clue_keys` 표(07 SQL). 새 회차는 대표님이 대시보드 "회차 설정" 암호 칸에 넣고 "✓ 게임과 같음"을 확인하도록 안내한다.
+  - `_config.yml`이 CLAUDE.md·README·docs·tests·supabase를 사이트에서 뺀다(저장소는 공개라 GitHub에서는 보임).
 - 채팅 ↔ 이 저장소는 `docs/episode-template.md` 양식으로 주고받는다. 받은 구성문은 만들기 전에 과학·수학 정확성과 게임 규칙을 먼저 검증하고, 고칠 점을 대표님께 알린다.
 
 ## 기술 구성
 - 빌드 도구 없음. 순수 HTML + ES 모듈 + CSS. GitHub Pages로 그대로 배포.
 - 저장: Supabase (무료 플랜). `js/config.js`가 비어 있으면 체험 모드(localStorage).
 - 모든 데이터 접근은 `js/store.js`의 `store` 객체를 통한다. 새 기능도 체험 모드와 실제 모드를 둘 다 구현한다.
-- 경험치는 서버에서만 계산한다 (`supabase/05_server_xp.sql`). 아이 계정은 표를 읽기만 하고, 기록은 `complete_stage` · `collect_clue` · `answer_review` 함수로만 남긴다. 체험 모드는 `store.js`의 `demoGrant`가 같은 규칙으로 계산한다.
+- 경험치는 서버에서만 계산한다 (`supabase/05_server_xp.sql`). 공개 날짜 전 기록과 틀린 암호도 서버가 막는다 (`supabase/07_server_checks.sql`, 기본 일정은 `stage_default_open`에도 있으니 `opensAt`을 바꾸면 새 SQL로 함께 바꾼다). 아이 계정은 표를 읽기만 하고, 기록은 `complete_stage` · `collect_clue` · `answer_review` 함수로만 남긴다. 체험 모드는 `store.js`의 `demoGrant`가 같은 규칙으로 계산한다.
 - Supabase 무료 플랜은 7일 무활동 시 일시정지 → `.github/workflows/keepalive.yml`이 3일마다 신호.
 - DB 변경은 `supabase/0N_*.sql` 새 파일로 추가하고, 대표님이 SQL Editor에서 실행하도록 안내한다. 기존 파일은 고치지 않는다.
 
@@ -92,6 +95,7 @@ export default {
 ## 개인정보·안전 원칙 (대표님 결정 없이 변경 금지)
 - 받는 정보는 아이디·비밀번호, 어린이/어른 구분, "보호자와 함께 신청" 체크뿐. 실명·학교·연락처·사진 수집 금지.
 - 가입은 신청 → 대표님 승인 (`supabase/06_signup_profile.sql`). 승인 전·거절 계정은 로그인과 기록이 막힌다.
+- 비밀번호를 잊은 아이는 대표님이 대시보드에서 새 비밀번호를 정해 준다 (`admin_set_password`, 07 SQL).
 - 어린이(만 14세 미만) 계정은 대표님이 보호자께 직접 동의를 확인하고 "보호자 동의 확인함"에 체크해야만 승인된다(`consent_checked_at` 기록). 근거: 개인정보 보호법 제22조의2.
 - 아바타는 그림 조합만(사진·이미지 업로드 없음). 닉네임은 자유 입력이되 대표님 승인 후에만 표시. 다른 아이의 프로필은 서로 볼 수 없다.
 - 아이들 간 1:1 순위·대결 없음. 개인 성장 + 협동 목표만. 랭킹이 필요하면 "가장 많이 도운 사람" 같은 긍정 지표만.

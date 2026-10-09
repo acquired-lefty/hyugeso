@@ -1,0 +1,9 @@
+# GitHub Pages(Jekyll) 설정: 게임에 필요 없는 파일은 사이트에 올리지 않음 (암호·설정 문서 포함)
+exclude:
+  - CLAUDE.md
+  - README.md
+  - docs
+  - tests
+  - supabase
+  - node_modules
+  - shots
