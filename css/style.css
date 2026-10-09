@@ -184,6 +184,13 @@ input {
 .step-btn:disabled { opacity: .5; cursor: default; }
 .step-val { min-width: 48px; text-align: center; font-family: var(--serif); font-size: 34px; font-weight: 700; }
 
+/* 소리 듣고 고르기 (4회차~) */
+.sound-row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 6px 0; }
+.sound-btn { display: inline-flex; align-items: center; min-height: 64px; padding: 12px 22px; font-size: 19px; background: var(--machine); color: var(--paper); box-shadow: 0 4px 0 #26397A; gap: 10px; }
+.sound-btn.is-playing { background: var(--neon); color: var(--ink); box-shadow: 0 4px 0 #A8405F; }
+.sound-icon { font-size: 16px; }
+.sound-status { text-align: center; min-height: 1.4em; }
+
 /* ---------- 결과 ---------- */
 .result h2 { color: var(--sodium); }
 .levelup {
