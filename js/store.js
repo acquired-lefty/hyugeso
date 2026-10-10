@@ -2,6 +2,25 @@ import { CONFIG } from './config.js';
 import { XP, levelFor, titleFor } from './xp.js';
 
 const DEMO_KEY = 'hyugeso-demo-v1';
+
+// 로그인 상태 유지: 켜면 브라우저를 닫아도 로그인이 남고(localStorage) 아이디도 기억,
+// 끄면 브라우저(탭)를 닫을 때 로그아웃(sessionStorage). 같이 쓰는 기기에서는 끄기를 권함.
+const REMEMBER_KEY = 'hyugeso-remember';
+const LAST_ID_KEY = 'hyugeso-last-id';
+const DEMO_SESSION_KEY = 'hyugeso-demo-session';
+const safe = (fn, fallback = null) => { try { return fn(); } catch { return fallback; } };
+const remembering = () => safe(() => localStorage.getItem(REMEMBER_KEY)) !== '0';
+
+// Supabase 로그인 정보를 "상태 유지" 설정에 따라 localStorage 또는 sessionStorage에 저장
+const authStorage = {
+  getItem: (k) => safe(() => localStorage.getItem(k)) ?? safe(() => sessionStorage.getItem(k)),
+  setItem: (k, v) => {
+    const [keep, drop] = remembering() ? [localStorage, sessionStorage] : [sessionStorage, localStorage];
+    safe(() => keep.setItem(k, v));
+    safe(() => drop.removeItem(k));
+  },
+  removeItem: (k) => { safe(() => localStorage.removeItem(k)); safe(() => sessionStorage.removeItem(k)); },
+};
 let sb = null;
 let live = false;
 let userId = null;
@@ -60,7 +79,7 @@ export const store = {
   async init() {
     if (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) {
       const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-      sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+      sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth: { storage: authStorage } });
       live = true;
     }
   },
@@ -71,16 +90,23 @@ export const store = {
       userId = data.session?.user?.id || null;
     } else {
       const db = readDemo();
-      userId = db.session && db.profile ? db.profile.id : null;
+      const tabSession = safe(() => sessionStorage.getItem(DEMO_SESSION_KEY)) === db.profile?.id;
+      userId = (db.session || tabSession) && db.profile ? db.profile.id : null;
     }
     return userId;
   },
 
-  async login(rawId, password) {
+  // 기억해 둔 아이디 (로그인 상태 유지를 켰을 때만)
+  get lastId() { return remembering() ? safe(() => localStorage.getItem(LAST_ID_KEY)) || '' : ''; },
+  get remember() { return remembering(); },
+
+  async login(rawId, password, { remember = true } = {}) {
     const id = rawId.trim().toLowerCase();
     if (!/^[a-z0-9_]{2,20}$/.test(id)) {
       throw new Error('아이디는 영어 소문자와 숫자로 적어 주세요.');
     }
+    safe(() => localStorage.setItem(REMEMBER_KEY, remember ? '1' : '0'));
+    safe(() => (remember ? localStorage.setItem(LAST_ID_KEY, id) : localStorage.removeItem(LAST_ID_KEY)));
     if (live) {
       const { data, error } = await sb.auth.signInWithPassword({
         email: `${id}@${CONFIG.EMAIL_DOMAIN}`, password,
@@ -103,7 +129,8 @@ export const store = {
         progress: {}, clues: {}, xpLog: [], reviews: [], team: db.team || {}, settings: db.settings || {},
       };
     }
-    db.session = true;
+    db.session = remember; // 상태 유지를 끄면 이 탭에서만 로그인
+    safe(() => (remember ? sessionStorage.removeItem(DEMO_SESSION_KEY) : sessionStorage.setItem(DEMO_SESSION_KEY, db.profile.id)));
     writeDemo(db);
     userId = db.profile.id;
   },
@@ -139,7 +166,7 @@ export const store = {
 
   async logout() {
     if (live) { await sb.auth.signOut(); }
-    else { const db = readDemo(); db.session = false; writeDemo(db); }
+    else { const db = readDemo(); db.session = false; writeDemo(db); safe(() => sessionStorage.removeItem(DEMO_SESSION_KEY)); }
     userId = null;
   },
 

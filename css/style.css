@@ -249,6 +249,8 @@ input {
 .choice-chip, .check-row { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 12px; border-radius: 12px; background: var(--deep); cursor: pointer; }
 .choice-chip input, .check-row input { width: 22px; height: 22px; accent-color: var(--sodium); }
 .check-row[hidden] { display: none; }
+.login .remember-row { margin-top: 8px; font-weight: 700; }
+.remember-note { margin: 0; }
 .who-btn { display: flex; align-items: center; gap: 6px; font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; min-height: 44px; }
 .who-btn strong { text-decoration: underline; text-underline-offset: 3px; }
 .who-avatar svg, .kid-avatar svg { display: block; }

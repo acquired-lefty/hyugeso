@@ -155,7 +155,7 @@ for (const meta of SEASON1.filter((s) => s.load)) checkRules(meta, (await meta.l
 
 for (const [name, w] of WIDTHS) {
   const full = name === 'mobile';
-  const p = await browser.newPage({ viewport: { width: w, height: 900 } });
+  const p = await (await browser.newContext({ viewport: { width: w, height: 900 } })).newPage();
   p.setDefaultTimeout(10000);
   p.on('pageerror', (e) => fail(`${name}: 화면 오류 ${e.message}`));
   await p.route('**/js/config.js', (r) => r.fulfill({ contentType: 'text/javascript', body: DEMO_CONFIG }));
@@ -220,7 +220,7 @@ for (const [name, w] of WIDTHS) {
     }
   }
   if (full) await extraChecks(p, w);
-  await p.close();
+  await p.context().close();
 }
 await browser.close();
 
@@ -285,6 +285,43 @@ async function extraChecks(p, w) {
     }
     console.log('ok  review');
   } catch (err) { fail(`review: ${err.message.split('\n')[0]}`); }
+
+  // 로그인 상태 유지: 끄면 새 탭(같은 브라우저)에서는 다시 로그인, 켜면 아이디 기억·새 탭에서도 로그인 유지
+  try {
+    const ctx = p.context();
+    const openTab = async () => {
+      const t = await ctx.newPage();
+      await t.route('**/js/config.js', (r) => r.fulfill({ contentType: 'text/javascript', body: DEMO_CONFIG }));
+      await t.route(/jsdelivr|fonts\.googleapis|fonts\.gstatic/, (r) => r.abort());
+      await t.goto(BASE);
+      await t.waitForSelector('.scene, #uid');
+      return t;
+    };
+    const login = async (remember) => {
+      await p.goto(BASE); await p.waitForSelector('.scene');
+      await p.click('.status button:text-is("나가기")'); await p.waitForSelector('#uid');
+      if ((await p.locator('#remember').isChecked()) !== remember) await p.click('#remember');
+      await p.fill('#uid', 'tester'); await p.click('text=휴게소 들어가기'); await p.waitForSelector('.scene');
+    };
+    await login(false);
+    await p.reload(); await p.waitForSelector('.scene, #uid');
+    if (!(await p.locator('.scene').count())) fail('remember: 상태 유지를 꺼도 같은 탭 새로고침은 로그인이 남아야 함');
+    let t = await openTab();
+    if (await t.locator('.scene').count()) fail('remember: 상태 유지를 껐는데 새 탭에서 로그인돼 있음');
+    if (await t.locator('#uid').inputValue()) fail('remember: 상태 유지를 껐는데 아이디가 기억됨');
+    await t.close();
+    await login(true);
+    t = await openTab();
+    if (!(await t.locator('.scene').count())) fail('remember: 상태 유지를 켰는데 새 탭에서 로그인이 풀림');
+    await t.click('.status button:text-is("나가기")'); await t.waitForSelector('#uid');
+    if ((await t.locator('#uid').inputValue()) !== 'tester') fail('remember: 아이디가 기억되지 않음');
+    await checkOverflow(t, w, 'remember/login');
+    await t.close();
+    // 새 탭에서 나가기를 했으므로 다음 검사를 위해 다시 로그인
+    await p.goto(BASE); await p.waitForSelector('#uid');
+    await p.fill('#uid', 'tester'); await p.click('text=휴게소 들어가기'); await p.waitForSelector('.scene');
+    console.log('ok  remember');
+  } catch (err) { fail(`remember: ${err.message.split('\n')[0]}`); }
 
   // 2층: 6회차 클리어 기록을 넣고 복습실·전시실 확인
   try {

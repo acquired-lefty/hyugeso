@@ -41,17 +41,20 @@ function topBar(profile) {
 function renderLogin(message) {
   const idInput = h('input', { id: 'uid', autocomplete: 'username', autocapitalize: 'none', required: true });
   const pwInput = h('input', { id: 'pw', type: 'password', autocomplete: 'current-password', required: !store.isDemo });
+  const remember = h('input', { id: 'remember', type: 'checkbox', checked: store.remember });
+  idInput.value = store.lastId;
   const note = h('p', { class: 'form-note', role: 'alert' }, message || '');
   const form = h('form', {
     class: 'login',
     onsubmit: async (e) => {
       e.preventDefault();
       note.textContent = '';
-      try { await store.login(idInput.value, pwInput.value); await boot(); } catch (err) { note.textContent = err.message; }
+      try { await store.login(idInput.value, pwInput.value, { remember: remember.checked }); await boot(); } catch (err) { note.textContent = err.message; }
     },
   },
   h('label', { for: 'uid' }, '관리자 아이디'), idInput,
   h('label', { for: 'pw' }, '비밀번호'), pwInput,
+  h('label', { class: 'check-row remember-row', for: 'remember' }, remember, ' 로그인 상태 유지'),
   note,
   h('button', { class: 'btn primary wide', type: 'submit' }, '대시보드 열기'));
 
