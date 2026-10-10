@@ -17,6 +17,7 @@
 - 저장: Supabase (무료 플랜). `js/config.js`가 비어 있으면 체험 모드(localStorage).
 - 모든 데이터 접근은 `js/store.js`의 `store` 객체를 통한다. 새 기능도 체험 모드와 실제 모드를 둘 다 구현한다.
 - 경험치는 서버에서만 계산한다 (`supabase/05_server_xp.sql`). 공개 날짜 전 기록과 틀린 암호도 서버가 막는다 (`supabase/07_server_checks.sql`, 기본 일정은 `stage_default_open`에도 있으니 `opensAt`을 바꾸면 새 SQL로 함께 바꾼다). 아이 계정은 표를 읽기만 하고, 기록은 `complete_stage` · `collect_clue` · `answer_review` 함수로만 남긴다. 체험 모드는 `store.js`의 `demoGrant`가 같은 규칙으로 계산한다.
+- 로그인 화면 "로그인 상태 유지"(기본 켬): 켜면 로그인·아이디를 localStorage에 기억, 끄면 sessionStorage라 창을 닫으면 로그아웃 (`store.js`의 `authStorage`).
 - Supabase 무료 플랜은 7일 무활동 시 일시정지 → `.github/workflows/keepalive.yml`이 3일마다 신호.
 - DB 변경은 `supabase/0N_*.sql` 새 파일로 추가하고, 대표님이 SQL Editor에서 실행하도록 안내한다. 기존 파일은 고치지 않는다.
 

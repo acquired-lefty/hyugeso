@@ -26,8 +26,9 @@ async function guard(fn) {
 
 // ---------- 로그인 ----------
 function renderLogin(message) {
-  const idInput = h('input', { id: 'uid', name: 'uid', autocomplete: 'username', autocapitalize: 'none', required: true });
+  const idInput = h('input', { id: 'uid', name: 'uid', autocomplete: 'username', autocapitalize: 'none', required: true, value: store.lastId });
   const pwInput = h('input', { id: 'pw', name: 'pw', type: 'password', autocomplete: 'current-password', required: !store.isDemo });
+  const remember = h('input', { id: 'remember', type: 'checkbox', checked: store.remember });
   const note = h('p', { class: 'form-note', role: 'alert' }, message || '');
 
   const form = h('form', {
@@ -36,13 +37,15 @@ function renderLogin(message) {
       e.preventDefault();
       note.textContent = '';
       try {
-        await store.login(idInput.value, pwInput.value);
+        await store.login(idInput.value, pwInput.value, { remember: remember.checked });
         await boot();
       } catch (err) { note.textContent = err.message; }
     },
   },
   h('label', { for: 'uid' }, '아이디'), idInput,
   h('label', { for: 'pw' }, store.isDemo ? '비밀번호 (체험 모드에서는 비워도 돼요)' : '비밀번호'), pwInput,
+  h('label', { class: 'check-row remember-row', for: 'remember' }, remember, ' 로그인 상태 유지'),
+  h('p', { class: 'small muted remember-note' }, '친구나 가족과 같이 쓰는 기기라면 체크를 빼 주세요. 창을 닫으면 로그아웃돼요.'),
   note,
   h('button', { class: 'btn primary wide', type: 'submit' }, '휴게소 들어가기'));
 
