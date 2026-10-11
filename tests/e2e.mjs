@@ -42,6 +42,10 @@ const SOLVE = {
     }
     await clickText(p, '주방으로 보내기');
   },
+  async pairs(p, s) {
+    for (let i = 0; i < s.pairs.length; i += 1) await p.locator('.pair-row').nth(i).locator('.pair-btn').nth(s.pairs[i].pick === 'a' ? 0 : 1).click();
+    await clickText(p, '칸에 넣기');
+  },
   async sort(p, s) {
     for (let i = 0; i < s.items.length; i += 1) await p.locator('.sort-item').nth(i).locator(`.state-${s.items[i][1]}`).click();
     await clickText(p, '칸에 넣기');

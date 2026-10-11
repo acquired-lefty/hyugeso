@@ -7,9 +7,11 @@
 //   intro: { line, start },            // 첫 대사, 시작 버튼 글자
 //   rounds: [{ who, label?, line, steps: [step, …] }],   // 본 라운드 3개
 //   bonus: { offer, who, line, steps },                    // 숨은 주문 (선택)
+//   result: { clear, findClue },       // 결과 화면 대사 (선택, 없으면 characters.js LINES)
 // }
 // step.kind: boxes(상자 담기) / sort(칸 나누기) / pick(모두 고르기) / choice(고르기)
 //            deal(한 바퀴씩 나눠 담기) / div(몫·나머지) / fill(빈칸 숫자) / listen(소리 듣고 고르기)
+//            pairs(짝마다 더 높은/큰 쪽 누르기: 칸 나누기의 짝 버전, 4회차)
 //            review(복습 문제 pool에서 하나: 숫자 답은 숫자 버튼, 보기가 있으면 3지선다. 6회차 중간 복습)
 // 고르기(choice·listen)의 보기는 항상 3개. 숫자 답은 화면 숫자 버튼(0~9)으로만 입력
 // 모든 step에 hints: ['개념', '구체적으로 쪼개기'] (2단계)
@@ -115,7 +117,8 @@ export function mountStage(root, cfg, { finish, exit }) {
         attempt: () => { stats.attempts += 1; },
         correct(text) {
           stopSound();
-          say(r.who, `${LAUGH[r.who]} ${text}`);
+          // s.noLaugh: 정답 대사를 웃음소리 없이 그대로 (구성문의 정답 대사가 따로 있을 때)
+          say(r.who, s.noLaugh ? text : `${LAUGH[r.who]}${text ? ` ${text}` : ''}`);
           // 소리 버튼은 정답 뒤에도 다시 들을 수 있게 남겨 둠
           body.querySelectorAll('button:not(.sound-btn)').forEach((b) => { b.disabled = true; });
           hintBtn.disabled = true;
@@ -224,6 +227,42 @@ const KINDS = {
   },
 
   // 칸 나누기: 물건마다 칸 버튼을 누름 (어느 물건이 틀렸는지는 말하지 않고, 칸마다 넘치는지·모자란지만)
+  // 짝마다 하나 고르기: 고른 쪽은 첫 번째 칸(예: 높은 소리), 나머지는 두 번째 칸.
+  // 틀리면 몇 짝이 바뀌었는지만 알려 줌 (어느 짝인지는 말하지 않음)
+  // s.pairs: [{ a, b, pick: 'a' | 'b' }], s.bins: ['높은 소리', '낮은 소리'], s.msgs.swap(n)
+  pairs(ctx) {
+    const { r, s, body, actions, hintBtn, say, attempt, correct, wrong } = ctx;
+    const chosen = s.pairs.map(() => null);
+    const rows = s.pairs.map((pr, i) => {
+      const btns = ['a', 'b'].map((side) => h('button', {
+        class: 'pair-btn', 'aria-pressed': 'false',
+        onclick: () => { chosen[i] = side; refresh(); },
+      }, h('span', { class: 'pair-tag' }), pr[side]));
+      return { btns, el: h('li', { class: 'pair-row' }, h('span', { class: 'pair-num' }, `짝 ${i + 1}`), h('div', { class: 'pair-btns' }, ...btns)) };
+    });
+    function refresh() {
+      rows.forEach((row, i) => row.btns.forEach((b, j) => {
+        const side = j === 0 ? 'a' : 'b';
+        const state = chosen[i] == null ? 'none' : chosen[i] === side ? 'first' : 'second';
+        b.setAttribute('aria-pressed', String(state === 'first'));
+        b.dataset.bin = state;
+        b.querySelector('.pair-tag').textContent = state === 'none' ? '' : s.bins[state === 'first' ? 0 : 1];
+      }));
+    }
+    body.append(h('p', { class: 'ask' }, s.ask), h('ol', { class: 'pair-list' }, ...rows.map((row) => row.el)));
+    refresh();
+    actions.replaceChildren(hintBtn, h('button', {
+      class: 'btn primary',
+      onclick: () => {
+        if (chosen.includes(null)) { say(r.who, s.msgs.notAll); return; }
+        attempt();
+        const off = chosen.filter((c, i) => c !== s.pairs[i].pick).length;
+        if (!off) { correct(s.okText || ''); return; }
+        wrong(s.msgs.swap(off));
+      },
+    }, '칸에 넣기'));
+  },
+
   sort(ctx) {
     const { r, s, body, actions, hintBtn, say, attempt, correct, wrong } = ctx;
     const picked = s.items.map(() => null);
@@ -299,7 +338,7 @@ const KINDS = {
         class: 'choice-btn',
         onclick: () => {
           attempt();
-          if (i === s.answer) correct(s.explain);
+          if (i === s.answer) correct(s.explain || '');
           else wrong(s.wrongMsg || VOICE[r.who].notIt);
         },
       }, c))));
