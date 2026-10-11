@@ -638,20 +638,22 @@ async function completeStage(meta, mod, result) {
   const firstClear = res.first;
   const teamHelped = res.first;
   const who = hostFor(meta.week);
+  const lines = { ...LINES[who], ...(mod.stage?.result || {}) }; // 회차별 결과 대사가 있으면 우선
 
   root.replaceChildren(
     statusBar(),
     h('section', { class: 'panel result' },
       h('h2', {}, '주문 완료!'),
+      firstClear && lines.clear ? bubble(who, lines.clear) : '',
       res.levelUp ? h('div', { class: 'levelup' },
         h('span', {}, '레벨 업'),
         h('strong', {}, `Lv.${profile.level} ${profile.title}`)) : null,
       firstClear
         ? h('ul', { class: 'xp-list' }, ...res.rows.map((r) =>
           h('li', {}, h('span', {}, XP_LABEL[r.source]), h('strong', {}, `+${r.amount}`))))
-        : bubble(who, LINES[who].retry),
+        : bubble(who, lines.retry),
       teamHelped ? h('p', { class: 'small muted' }, '부엌 공동 목표가 한 칸 찼어요.') : null,
-      bubble(who, LINES[who].findClue),
+      bubble(who, lines.findClue),
       h('div', { class: 'actions' },
         h('button', { class: 'btn ghost', onclick: () => guard(renderHub) }, '휴게소로'),
         h('button', { class: 'btn primary', onclick: () => guard(() => renderClue(meta, true)) }, '암호 입력'))));

@@ -217,6 +217,17 @@ input {
 .gallery { list-style: none; padding: 0; display: grid; gap: 8px; }
 .gallery-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; border-radius: 14px; background: var(--night-2); }
 
+/* 짝 고르기 (4회차) */
+.pair-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.pair-row { display: grid; gap: 6px; padding: 10px; background: #fff; border: 2px solid #E6DCC6; border-radius: 14px; }
+.pair-num { font-size: 14px; font-weight: 700; color: #8A6A33; }
+.pair-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pair-btn { display: grid; gap: 4px; align-content: center; justify-items: center; min-height: 72px; padding: 8px; text-align: center; word-break: keep-all; font: inherit; font-weight: 700; color: var(--ink); background: var(--paper); border: 3px solid #E6DCC6; border-radius: 12px; cursor: pointer; }
+.pair-btn[data-bin="first"] { background: #FFE8BF; border-color: var(--sodium); }
+.pair-btn[data-bin="second"] { background: #E2F4F0; border-color: #3E8F82; }
+.pair-tag { font-size: 13px; min-height: 1.2em; color: #8A6A33; }
+.pair-btn:disabled { cursor: default; }
+
 /* ---------- 결과 ---------- */
 .result h2 { color: var(--sodium); }
 .levelup {
