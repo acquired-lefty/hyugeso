@@ -228,6 +228,16 @@ input {
 .pair-tag { font-size: 13px; min-height: 1.2em; color: #8A6A33; }
 .pair-btn:disabled { cursor: default; }
 
+/* 그림 속 선 고르기 (5회차) */
+.pick-figure svg { max-width: 300px; }
+.pick-figure [data-pick] { cursor: pointer; -webkit-tap-highlight-color: transparent; outline: none; }
+.pick-figure [data-pick] .ln { stroke: var(--ink); stroke-width: 3; }
+.pick-figure [data-pick] .hit { stroke: transparent; stroke-width: 22; }
+.pick-figure [data-pick] circle.tag { fill: #fff; stroke: var(--ink); stroke-width: 2; }
+.pick-figure [data-pick].is-on .ln { stroke: var(--neon); stroke-width: 5; }
+.pick-figure [data-pick].is-on circle.tag { fill: var(--sodium); }
+.pick-grid-6 { grid-template-columns: repeat(3, 1fr); }
+
 /* ---------- 결과 ---------- */
 .result h2 { color: var(--sodium); }
 .levelup {

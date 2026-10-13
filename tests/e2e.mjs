@@ -196,7 +196,7 @@ for (const [name, w] of WIDTHS) {
       await p.click('.result >> text=암호 입력');
       await p.fill('#clue', '틀린 암호');
       await p.click('.clue-form button:text-is("확인")');
-      if (!/아닌|아니/.test(await p.locator('.talk p').innerText())) fail(`${tag}: 틀린 암호가 통과됨`);
+      if (!/아닌|아니|아닙/.test(await p.locator('.talk p').innerText())) fail(`${tag}: 틀린 암호가 통과됨`);
       await p.fill('#clue', ` ${answer.slice(0, 2)} ${answer.slice(2)} `); // 띄어쓰기는 무시되어야 함
       await p.click('.clue-form button:text-is("확인")');
       const said = await p.locator('.talk p').innerText();

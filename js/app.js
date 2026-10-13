@@ -339,6 +339,19 @@ async function renderClueBook() {
 }
 
 // ---------- 부엌 (회차 목록) ----------
+// 부엌 주문판 대사: 지금 열려 있는 가장 최근 회차의 진행 캐릭터가 말함 (2회마다 교대)
+const KITCHEN_LINE = {
+  kkam: '이번 회차 주문만 열려 있는 거지. 나머지는… 기다리는 거지.',
+  tipo: '이번 회차 주문만 열려 있어. 나머지는… 기다려. not bad한 건 원래 천천히 와.',
+  ddal: '이번 회차 주문만 열려 있습니다만. 나머지는 날짜가 되면 열립니다만.',
+};
+function kitchenHost() {
+  const open = SEASON1.filter((s) => stageStatus(s, { settings }) === 'open');
+  const who = hostFor(open.length ? open[open.length - 1].week : 1);
+  return bubble(who, KITCHEN_LINE[who]);
+}
+
+
 async function renderKitchen() {
   const progress = await store.allProgress();
   const list = h('ol', { class: 'weeks' }, ...SEASON1.map((s) => {
@@ -367,7 +380,7 @@ async function renderKitchen() {
         h('button', { class: 'link', onclick: () => guard(renderHub) }, '휴게소로'),
         h('span', { class: 'stage-step' }, '부엌')),
       h('h2', {}, '부엌 주문판'),
-      bubble('tipo', '이번 회차 주문만 열려 있어. 나머지는… 기다려. not bad한 건 원래 천천히 와.'),
+      kitchenHost(),
       list));
 }
 
