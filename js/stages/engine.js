@@ -310,16 +310,21 @@ const KINDS = {
   pick(ctx) {
     const { r, s, body, actions, hintBtn, say, attempt, correct, wrong } = ctx;
     const on = s.items.map(() => false);
-    const btns = s.items.map(([name], i) => h('button', {
-      class: 'pick-btn', 'aria-pressed': 'false',
-      onclick: () => { on[i] = !on[i]; btns[i].setAttribute('aria-pressed', String(on[i])); },
-    }, name));
-    body.append(h('p', { class: 'ask' }, s.ask), h('div', { class: 'pick-grid' }, ...btns));
+    // s.art: 그림(SVG). 그림 속 [data-pick="번호"] 요소를 눌러도 같은 보기가 골라짐 (5회차 원의 선)
+    const fig = s.art ? h('div', { class: 'exp-figure pick-figure', html: s.art }) : null;
+    const toggle = (i) => { on[i] = !on[i]; refresh(); };
+    const btns = s.items.map(([name], i) => h('button', { class: 'pick-btn', 'aria-pressed': 'false', onclick: () => toggle(i) }, name));
+    function refresh() {
+      btns.forEach((b, i) => b.setAttribute('aria-pressed', String(on[i])));
+      fig?.querySelectorAll('[data-pick]').forEach((el) => el.classList.toggle('is-on', on[Number(el.dataset.pick)]));
+    }
+    fig?.querySelectorAll('[data-pick]').forEach((el) => el.addEventListener('click', () => { if (!btns[0].disabled) toggle(Number(el.dataset.pick)); }));
+    body.append(fig || '', h('p', { class: 'ask' }, s.ask), h('div', { class: `pick-grid ${s.art ? 'pick-grid-6' : ''}` }, ...btns));
     actions.replaceChildren(hintBtn, h('button', {
       class: 'btn primary',
       onclick: () => {
         const have = on.filter(Boolean).length;
-        if (!have) { say(r.who, '하나도 안 골랐어. 먼저 골라 봐.'); return; }
+        if (!have) { say(r.who, VOICE[r.who].pickFirst); return; }
         attempt();
         if (on.every((v, i) => v === s.items[i][1])) { correct(s.okText); return; }
         const need = s.items.filter(([, v]) => v).length;
