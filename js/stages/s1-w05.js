@@ -3,6 +3,9 @@
 // 진행 캐릭터: 자판남 (5~6회차)
 // 사실 확인: 정사각형은 한 변보다 대각선이 길어 네모 뚜껑은 대각선 방향으로 구멍에 빠질 수 있다.
 //   https://koreascience.kr/article/JAKO200545940486972.pdf
+// 통영 맨홀 뚜껑의 거북선 그림 (대표님 확인 자료):
+//   https://v.daum.net/v/20260727185933272 , https://www.cover-spot.com/ko/cover/3757245858
+//   https://m.blog.naver.com/PostView.naver?blogId=darki1984&logNo=223267360801
 import { mountStage } from './engine.js';
 
 // 중심 점이 있는 원과 선 6개 (선이나 번호를 눌러도 고를 수 있음)
@@ -94,7 +97,7 @@ const BONUS = {
   line: '…숨은 주문입니다만. 영상에서 동네마다 맨홀 뚜껑 그림이 다르다는 걸 보셨습니다만.',
   steps: [{
     kind: 'choice',
-    ask: '영상에 나온 통영의 맨홀 뚜껑에는 무엇이 그려져 있습니까?',
+    ask: '통영의 맨홀 뚜껑에는 무엇이 그려져 있습니까?',
     choices: ['거북선', '호랑이', '학'],
     answer: 0,
     noLaugh: true,
