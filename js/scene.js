@@ -8,7 +8,8 @@ const lock = (x, y) => `
 
 // open: { kitchen, arcade, bus, basement, floor2 } — 문/공간이 열렸는지
 // deco: true면 공동 목표 달성 장식(지붕 전구 줄과 축하 깃발)을 그림 (움직이지 않음)
-export function sceneSvg(open, { deco = false } = {}) {
+// unlock: 'floor2'면 위층 창문 불이 켜지고 계단이 나타나는 연출용 요소를 넣음 (CSS .unlock-floor2)
+export function sceneSvg(open, { deco = false, unlock = '' } = {}) {
   const door = (key, label, body) => `
     <g data-door="${key}" class="door ${open[key] ? 'door-open' : 'door-locked'}"
        tabindex="0" role="button" aria-label="${label}${open[key] ? ', 열려 있음' : ', 잠겨 있음'}">${body}</g>`;
@@ -50,10 +51,16 @@ export function sceneSvg(open, { deco = false } = {}) {
     <text x="303" y="147" text-anchor="middle" class="bus-label">승강장</text>
     ${lock(293, 176)}`)}
 
-  ${door('floor2', '2층 창문', `
+  ${door('floor2', '위층 창문', `
     <rect x="216" y="137" width="40" height="26" rx="3" fill="${open.floor2 ? '#F2A93B' : '#0F1630'}" stroke="${open.floor2 ? '#FBF6EC' : '#8A93B8'}" stroke-width="2"/>
     <path d="M236 137v26" stroke="${open.floor2 ? '#B67518' : '#27345C'}" stroke-width="2"/>
-    <text x="236" y="175" text-anchor="middle" class="door-label small">2층</text>`)}
+    ${unlock === 'floor2' ? '<rect class="floor2-dim" x="215" y="136" width="42" height="28" rx="3" fill="#0F1630"/>' : ''}
+    <text x="236" y="175" text-anchor="middle" class="door-label small">위층</text>`)}
+
+  ${open.floor2 ? `<g class="stairs" aria-hidden="true" pointer-events="none">
+    <path d="M226 230h6v-10h6v-10h6v-10h6v-10h4" fill="none" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M226 222l24-36" fill="none" stroke-width="1.5" opacity=".7"/>
+  </g>` : ''}
 
   ${door('basement', '지하로 가는 문', `
     <rect x="222" y="252" width="34" height="14" fill="#0F1630" stroke="#8A93B8" stroke-width="2"/>

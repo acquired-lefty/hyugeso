@@ -12,7 +12,7 @@ export const SEASON1 = [
   { id: 's1-w03', week: 3, title: '쿠키 공평하게 나누기', subject: '수학: 나눗셈', opensAt: '2026-10-12', open: true, load: () => import('./s1-w03.js') },
   { id: 's1-w04', week: 4, title: '유리 창고의 도레미', subject: '과학: 소리', opensAt: '2026-10-15', open: true, load: () => import('./s1-w04.js') },
   { id: 's1-w05', week: 5, title: '둥근 뚜껑의 비밀', subject: '수학: 원', opensAt: '2026-10-19', open: true, load: () => import('./s1-w05.js') },
-  { id: 's1-w06', week: 6, title: '중간 미션: 메뉴 가격표', subject: '통합: 수학과 경제', opensAt: '2026-10-22', open: false, load: () => import('./s1-w06.js') },
+  { id: 's1-w06', week: 6, title: '중간 미션: 매점 메뉴판', subject: '수학: 돈 계산', opensAt: '2026-10-22', open: true, load: () => import('./s1-w06.js') },
   { id: 's1-w07', week: 7, title: '피자 조각 싸움', subject: '수학: 분수', opensAt: '2026-10-26', open: false },
   { id: 's1-w08', week: 8, title: '동물 손님의 주문서', subject: '과학: 동물의 생활', opensAt: '2026-10-29', open: false },
   { id: 's1-w09', week: 9, title: '계량컵이 거짓말을?', subject: '수학: 들이와 무게', opensAt: '2026-11-02', open: false },
