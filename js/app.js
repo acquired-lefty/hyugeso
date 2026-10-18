@@ -12,6 +12,7 @@ const root = document.getElementById('app');
 let profile = null;
 let teamBadge = false; // 공동 목표 달성 칭호 표시 여부 (휴게소 화면에서 갱신)
 let settings = {};      // 회차 설정(공개 날짜·영상 주소), 로그인할 때 불러옴
+let justUnlocked = '';  // 방금 열린 공간 ('floor2'): 다음 허브 화면에서 한 번 연출
 const shownName = (p) => p.display_name || p.nickname;
 
 function showError(err, retry) {
@@ -124,14 +125,14 @@ function statusBar() {
 }
 
 // ---------- 휴게소 (허브) ----------
-const FLOOR2_STAGE = 's1-w06';   // 이 회차를 클리어하면 2층이 열림
+const FLOOR2_STAGE = 's1-w06';   // 이 회차를 클리어하면 위층(2층 공간)이 열림
 const BASEMENT_STAGE = 's1-w12'; // 이 회차를 클리어하면 지하가 열림
 const TEAM_TITLE = '부엌 지킴이'; // 공동 목표 달성 + 한 번이라도 보탠 친구에게 붙는 칭호
 
 const DOOR_LINE = {
   arcade: '오락실은 아직 잠겨 있는 거지. 부엌 주문부터.',
   bus: '버스는 아직 안 오는 거지. 시간표가 비어 있어.',
-  floor2: '2층은 6회차 주문을 끝내면 불이 켜지는 거지.',
+  floor2: '위층은 6회차 주문을 끝내면 불이 켜지는 거지.',
   basement: '…거긴 아직. 12회차까지 단서를 모아야 하는 거지.',
 };
 
@@ -150,10 +151,14 @@ async function renderHub() {
   const reviewAlert = due.length ? h('section', { class: 'review-alert' },
     bubble('kkam', `2주 전에 풀었던 주문, 기억나는지 보는 거지. 복습할 단서 ${due.length}개.`),
     h('button', { class: 'btn primary wide', onclick: () => guard(() => renderReview(due[0])) }, '복습하기')) : '';
-  const tip = h('div', { class: 'scene-tip' }, bubble('kkam', teamDone
-    ? '부엌 공동 목표를 다 채운 거지. 친구들 덕분에 휴게소가 반짝이는 거지.'
-    : '불 켜진 문을 눌러 보는 거지.'));
-  const scene = h('section', { class: 'scene', html: sceneSvg(open, { deco: teamDone }) });
+  const unlock = justUnlocked && open[justUnlocked] ? justUnlocked : '';
+  justUnlocked = '';
+  const tip = h('div', { class: 'scene-tip' }, bubble('kkam', unlock === 'floor2'
+    ? '위층 창문에 불이 켜진 거지. 계단도 생겼으니 창문을 눌러 올라가 보는 거지.'
+    : teamDone
+      ? '부엌 공동 목표를 다 채운 거지. 친구들 덕분에 휴게소가 반짝이는 거지.'
+      : '불 켜진 문을 눌러 보는 거지.'));
+  const scene = h('section', { class: `scene ${unlock ? `unlock-${unlock}` : ''}`, html: sceneSvg(open, { deco: teamDone, unlock }) });
 
   scene.querySelectorAll('[data-door]').forEach((el) => {
     const go = () => {
@@ -189,16 +194,16 @@ async function renderHub() {
 
 // ---------- 2층 (6회차 클리어 후): 복습실 + 단서 전시실 ----------
 const pageHead = (label, back) => h('header', { class: 'stage-head' },
-  h('button', { class: 'link', onclick: () => guard(back) }, back === renderHub ? '휴게소로' : '2층으로'),
+  h('button', { class: 'link', onclick: () => guard(back) }, back === renderHub ? '휴게소로' : '위층으로'),
   h('span', { class: 'stage-step' }, label));
 
 function renderFloor2() {
   root.replaceChildren(
     statusBar(),
     h('section', { class: 'panel floor2' },
-      pageHead('2층', renderHub),
-      h('h2', {}, '휴게소 2층'),
-      bubble('kkam', '2층 불이 켜진 거지. 지난 문제를 다시 풀어 보는 방, 모은 단서와 영상을 모아 둔 방이 있는 거지.'),
+      pageHead('위층', renderHub),
+      h('h2', {}, '휴게소 위층'),
+      bubble('kkam', '위층 불이 켜진 거지. 지난 문제를 다시 풀어 보는 방, 모은 단서와 영상을 모아 둔 방이 있는 거지.'),
       h('div', { class: 'room-grid' },
         h('button', { class: 'room-btn', onclick: () => guard(renderPracticeRoom) },
           h('strong', {}, '복습실'), h('span', { class: 'small' }, '끝낸 회차 문제를 언제든 다시 풀어요. 연습이라 경험치는 없어요.')),
@@ -652,12 +657,18 @@ async function completeStage(meta, mod, result) {
   const teamHelped = res.first;
   const who = hostFor(meta.week);
   const lines = { ...LINES[who], ...(mod.stage?.result || {}) }; // 회차별 결과 대사가 있으면 우선
+  // 중간 미션 첫 클리어: 위층 해금 (허브에서 불 켜짐·계단 연출)
+  const unlockFloor2 = firstClear && meta.id === FLOOR2_STAGE;
+  if (unlockFloor2) justUnlocked = 'floor2';
 
   root.replaceChildren(
     statusBar(),
     h('section', { class: 'panel result' },
       h('h2', {}, '주문 완료!'),
       firstClear && lines.clear ? bubble(who, lines.clear) : '',
+      unlockFloor2 ? h('div', { class: 'unlock-banner', role: 'status' },
+        h('strong', {}, '휴게소 위층에 불이 켜졌어요!'),
+        h('span', { class: 'small' }, '휴게소로 돌아가면 위층 창문과 계단이 보여요. 복습실과 단서 전시실이 있어요.')) : '',
       res.levelUp ? h('div', { class: 'levelup' },
         h('span', {}, '레벨 업'),
         h('strong', {}, `Lv.${profile.level} ${profile.title}`)) : null,

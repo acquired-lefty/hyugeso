@@ -5,6 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { SEASON1, hostFor } from '../js/stages/index.js';
+import { boxTarget } from '../js/stages/engine.js';
 
 // 영상 암호 (화면 코드에는 지문만 있음)
 const ANSWERS = JSON.parse(readFileSync(new URL('./clue-answers.json', import.meta.url), 'utf8'));
@@ -35,12 +36,12 @@ const clickText = (p, text) => p.locator(`.stage button:text-is("${text}")`).cli
 // 문제 형태별 자동 풀이 (정답 제출까지)
 const SOLVE = {
   async boxes(p, s) {
-    let rest = s.per * s.times;
+    let rest = boxTarget(s);
     for (const b of [...s.boxes].sort((x, y) => y - x)) {
       const n = Math.floor(rest / b); rest -= n * b;
-      for (let i = 0; i < n; i += 1) await p.locator(`.box-${b}`).click();
+      for (let i = 0; i < n; i += 1) await p.locator(`.box[data-unit="${b}"]`).click();
     }
-    await clickText(p, '주방으로 보내기');
+    await clickText(p, s.send || '주방으로 보내기');
   },
   async pairs(p, s) {
     for (let i = 0; i < s.pairs.length; i += 1) await p.locator('.pair-row').nth(i).locator('.pair-btn').nth(s.pairs[i].pick === 'a' ? 0 : 1).click();
@@ -211,6 +212,11 @@ for (const [name, w] of WIDTHS) {
       if (!db.progress[meta.id]?.cleared) fail(`${tag}: 클리어 기록 없음`);
       await p.click('.clue-form button:text-is("휴게소로")');
       await p.waitForSelector('.scene');
+      // 중간 미션 첫 클리어 뒤 허브: 위층 불·계단 연출
+      if (meta.id === 's1-w06') {
+        if (!(await p.locator('.scene.unlock-floor2 .stairs').count())) fail(`${tag}: 위층 해금 연출이 없음`);
+        if (!/위층/.test(await p.locator('.scene-tip p').innerText())) fail(`${tag}: 위층 해금 대사가 없음`);
+      }
       await p.click('.strip-link');
       const card = p.locator('.clue-card').nth(SEASON1.indexOf(meta));
       if ((await card.locator('.clue-word').innerText()) !== answer.replace(/\s+/g, '')) fail(`${tag}: 단서 도감에 암호가 안 보임`);
@@ -350,13 +356,13 @@ async function extraChecks(p, w) {
     if (!/맞는 거지/.test(await p.locator('.talk p').innerText())) fail('floor2: 연습 정답 처리 안 됨');
     await checkOverflow(p, w, 'floor2/practice');
     await p.click('.actions button:text-is("복습실로")');
-    await p.click('button:text-is("2층으로")');
+    await p.click('button:text-is("위층으로")');
     await p.click('.room-btn:has-text("단서 전시실")');
     const words = await p.locator('.gallery .clue-word').allInnerTexts();
     if (!words.includes(ANSWERS['s1-w01'])) fail(`floor2: 전시실에 단서가 안 보임 (${words.join(',')})`);
     await checkOverflow(p, w, 'floor2/gallery');
     console.log('ok  floor2');
-  } catch (err) { fail(`floor2: ${err.message.split('\n')[0]}`); }
+  } catch (err) { fail(`floor2: ${err.message.split("\n").slice(0, 3).join(" ")}`); if (SHOTS) await p.screenshot({ path: `${SHOTS}/floor2-fail.png`, fullPage: true }); }
 }
 
 if (errors.length) {

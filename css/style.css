@@ -156,6 +156,11 @@ input {
 .box-10 .box-art { width: 40px; height: 44px; border-radius: 10px 10px 14px 14px; background: var(--mint); border-color: #3E8F82; }
 .box-1 .box-art { width: 22px; height: 22px; border-radius: 50%; background: var(--sodium); border-color: #B67518; margin-top: 18px; }
 .box:disabled { opacity: .5; cursor: default; }
+/* 6회차 돈 (실제 도안이 아닌 단순한 그림) */
+.box-bill .box-art { width: 64px; height: 34px; border-radius: 4px; background: #CFE8C4; border-color: #4E7F45; margin-top: 12px; box-shadow: inset 0 0 0 5px #E6F3E0; }
+.box-coin .box-art { width: 34px; height: 34px; border-radius: 50%; background: #D9D9D9; border-color: #8A8A8A; margin-top: 12px; box-shadow: inset 0 0 0 4px #EDEDED; }
+.chip-bill { background: #CFE8C4; }
+.chip-coin { background: #E2E2E2; }
 
 .cart { margin-top: 12px; padding: 12px; border-radius: 12px; background: #fff; border: 2px solid #E6DCC6; }
 .cart-total { display: flex; align-items: baseline; gap: 8px; }
@@ -237,6 +242,15 @@ input {
 .pick-figure [data-pick].is-on .ln { stroke: var(--neon); stroke-width: 5; }
 .pick-figure [data-pick].is-on circle.tag { fill: var(--sodium); }
 .pick-grid-6 { grid-template-columns: repeat(3, 1fr); }
+
+/* 위층 해금 연출 (6회차 첫 클리어 뒤 허브에서 한 번) */
+.unlock-banner { display: grid; gap: 4px; padding: 12px 14px; margin: 10px 0; border-radius: 14px; background: #3A3320; border: 2px solid var(--sodium); }
+.unlock-banner strong { font-family: var(--serif); color: var(--sodium); font-size: 20px; }
+.scene-svg .stairs path { stroke: #F2A93B; }
+.scene.unlock-floor2 .floor2-dim { animation: dim-out 1.6s ease-out forwards; }
+.scene.unlock-floor2 .stairs { animation: stairs-in 1.6s ease-out .4s both; }
+@keyframes dim-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes stairs-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 /* ---------- 결과 ---------- */
 .result h2 { color: var(--sodium); }
@@ -426,6 +440,7 @@ textarea {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flicker, .char-kkam .eyes { animation: none; }
+  .flicker, .char-kkam .eyes, .scene.unlock-floor2 .floor2-dim, .scene.unlock-floor2 .stairs { animation: none; }
+  .scene.unlock-floor2 .floor2-dim { opacity: 0; }
   .btn.primary:active, .box:active .box-art, .pad-key:active:not(:disabled) { transform: none; }
 }

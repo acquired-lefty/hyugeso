@@ -32,6 +32,8 @@ const DIV_MSG = {
 const OFFER_FIRST = new Set(['choice', 'listen']);
 
 const BOX_NAME = { 100: '통', 10: '봉지', 1: '낱개' };
+// 상자 담기의 정답 합계 (tests/e2e.mjs도 사용)
+export const boxTarget = (s) => s.target ?? s.per * s.times;
 
 // 숫자 버튼판 (0~9, 최대 4자리). 칸이 여러 개면 칸을 눌러 고른 뒤 숫자를 누름
 // fields: [{ label, unit }] → { el, get(i) } (빈칸이면 null)
@@ -185,30 +187,37 @@ function divInputs({ r, body, actions, hintBtn, say, attempt, correct, wrong }, 
 
 const KINDS = {
   // 1회차: 100·10·1 단위 상자를 담아 레시피 × 주문 수 만들기
+  // 기본은 1회차 방식(레시피 × 주문서). 다른 단위로 쓸 때(6회차 돈: 천 원·백 원)는
+  // target(정답 합계), names(단위 이름), art(단위별 그림 class), cards(위쪽 카드), ask, item, send, cartNote, okText, msgs로 바꿈
   boxes(ctx) {
     const { r, s, body, actions, hintBtn, say, attempt, correct, wrong } = ctx;
-    const target = s.per * s.times;
+    const target = boxTarget(s);
+    const names = s.names || BOX_NAME;
+    const art = (b) => s.art?.[b] || String(b);
+    const fmt = (n) => (s.money ? n.toLocaleString('ko-KR') : String(n));
     const cart = Object.fromEntries(s.boxes.map((b) => [b, 0]));
     const totalEl = h('strong', { class: 'total-num' }, '0');
     const cartEl = h('div', { class: 'cart-chips' });
     const total = () => s.boxes.reduce((sum, b) => sum + b * cart[b], 0);
     function refresh() {
-      totalEl.textContent = total();
+      totalEl.textContent = fmt(total());
       cartEl.replaceChildren(...s.boxes.filter((b) => cart[b] > 0).map((b) =>
-        h('button', { class: `chip chip-${b}`, 'aria-label': `${BOX_NAME[b]} 하나 빼기`, onclick: () => { cart[b] -= 1; refresh(); } },
-          `${BOX_NAME[b]} ×${cart[b]}`)));
+        h('button', { class: `chip chip-${art(b)}`, 'aria-label': `${names[b]} 하나 빼기`, onclick: () => { cart[b] -= 1; refresh(); } },
+          `${names[b]} ×${cart[b]}`)));
       if (!cartEl.children.length) cartEl.append(h('span', { class: 'muted' }, '아직 비어 있어요'));
     }
+    const cards = s.cards || [
+      { cls: 'recipe', tag: '레시피', line: `${s.dish} 1${s.dishUnit}`, big: `${s.item} ${s.per}${s.unit}` },
+      { cls: 'slip', tag: '주문서', line: s.dish, big: `${s.times}${s.dishUnit}` },
+    ];
     body.append(
-      h('div', { class: 'order' },
-        h('div', { class: 'recipe' }, h('span', { class: 'tag' }, '레시피'), h('p', {}, `${s.dish} 1${s.dishUnit}`), h('p', { class: 'big' }, `${s.item} ${s.per}${s.unit}`)),
-        h('div', { class: 'slip' }, h('span', { class: 'tag' }, '주문서'), h('p', {}, s.dish), h('p', { class: 'big' }, `${s.times}${s.dishUnit}`))),
-      h('p', { class: 'ask' }, `창고에서 ${josa(s.item, '을', '를')} 몇 ${s.unit} 꺼내야 할까?`),
-      h('div', { class: 'shelf' }, ...s.boxes.map((b) => h('button', { class: `box box-${b}`, onclick: () => { cart[b] += 1; refresh(); } },
-        h('span', { class: 'box-art' }), h('span', { class: 'box-label' }, `${b}${s.unit} ${BOX_NAME[b]}`)))),
+      h('div', { class: 'order' }, ...cards.map((c) => h('div', { class: c.cls }, h('span', { class: 'tag' }, c.tag), h('p', {}, c.line), h('p', { class: 'big' }, c.big)))),
+      h('p', { class: 'ask' }, s.ask || `창고에서 ${josa(s.item, '을', '를')} 몇 ${s.unit} 꺼내야 할까?`),
+      h('div', { class: 'shelf' }, ...s.boxes.map((b) => h('button', { class: `box box-${art(b)}`, 'data-unit': b, onclick: () => { cart[b] += 1; refresh(); } },
+        h('span', { class: 'box-art' }), h('span', { class: 'box-label' }, s.names ? names[b] : `${b}${s.unit} ${names[b]}`)))),
       h('div', { class: 'cart' },
         h('div', { class: 'cart-total' }, h('span', {}, `담은 ${s.item}`), totalEl, h('span', {}, s.unit)),
-        h('p', { class: 'muted small' }, '담은 상자를 누르면 하나씩 빠져요.'),
+        h('p', { class: 'muted small' }, s.cartNote || '담은 상자를 누르면 하나씩 빠져요.'),
         cartEl));
     refresh();
     actions.replaceChildren(
@@ -218,12 +227,12 @@ const KINDS = {
         class: 'btn primary',
         onclick: () => {
           const t = total();
-          if (t === 0) { say(r.who, '상자를 먼저 담아야 하는 거지.'); return; }
+          if (t === 0) { say(r.who, s.msgs?.empty || '상자를 먼저 담아야 하는 거지.'); return; }
           attempt();
-          if (t === target) { correct(`${s.item} ${target}${s.unit}, 딱 맞는 거지.`); return; }
-          wrong(t > target ? '음… 너무 많은 거지. 상자가 넘쳐.' : '음… 조금 모자란 거지.');
+          if (t === target) { correct(s.okText ?? `${s.item} ${target}${s.unit}, 딱 맞는 거지.`); return; }
+          wrong(t > target ? (s.msgs?.over || '음… 너무 많은 거지. 상자가 넘쳐.') : (s.msgs?.under || '음… 조금 모자란 거지.'));
         },
-      }, '주방으로 보내기'));
+      }, s.send || '주방으로 보내기'));
   },
 
   // 칸 나누기: 물건마다 칸 버튼을 누름 (어느 물건이 틀렸는지는 말하지 않고, 칸마다 넘치는지·모자란지만)
