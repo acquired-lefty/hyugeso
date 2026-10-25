@@ -1,5 +1,5 @@
 import { store, STATUS_MESSAGE } from './store.js';
-import { h, bubble, normalize, clueHash } from './ui.js';
+import { h, bubble, normalize, clueHash, josa } from './ui.js';
 import { sceneSvg } from './scene.js';
 import { levelProgress, XP_LABEL } from './xp.js';
 import { SEASON1, TEAM_GOAL_ID, CLUE_TOTAL, stageStatus, opensLabel, hostFor } from './stages/index.js';
@@ -132,7 +132,7 @@ const TEAM_TITLE = '부엌 지킴이'; // 공동 목표 달성 + 한 번이라�
 const DOOR_LINE = {
   arcade: '오락실은 아직 잠겨 있는 거지. 부엌 주문부터.',
   bus: '버스는 아직 안 오는 거지. 시간표가 비어 있어.',
-  floor2: '위층은 6회차 주문을 끝내면 불이 켜지는 거지.',
+  floor2: '2층은 6회차 주문을 끝내면 불이 켜지는 거지.',
   basement: '…거긴 아직. 12회차까지 단서를 모아야 하는 거지.',
 };
 
@@ -194,16 +194,21 @@ async function renderHub() {
 
 // ---------- 2층 (6회차 클리어 후): 복습실 + 단서 전시실 ----------
 const pageHead = (label, back) => h('header', { class: 'stage-head' },
-  h('button', { class: 'link', onclick: () => guard(back) }, back === renderHub ? '휴게소로' : '위층으로'),
+  h('button', { class: 'link', onclick: () => guard(back) }, back === renderHub ? '휴게소로' : '2층으로'),
   h('span', { class: 'stage-step' }, label));
 
-function renderFloor2() {
+// 2층 방에서 하는 회차 (stages/index.js의 place: 'floor2')
+const FLOOR2_ROOMS = SEASON1.filter((s) => s.place === 'floor2');
+
+async function renderFloor2() {
+  const progress = await store.allProgress();
   root.replaceChildren(
     statusBar(),
     h('section', { class: 'panel floor2' },
-      pageHead('위층', renderHub),
-      h('h2', {}, '휴게소 위층'),
-      bubble('kkam', '위층 불이 켜진 거지. 지난 문제를 다시 풀어 보는 방, 모은 단서와 영상을 모아 둔 방이 있는 거지.'),
+      pageHead('2층', renderHub),
+      h('h2', {}, '휴게소 2층 (옛 푸드코트)'),
+      bubble('kkam', '2층 불이 켜진 거지. 가게마다 그 회차 주문이 있고, 지난 문제를 다시 푸는 방과 단서를 모아 둔 방도 있는 거지.'),
+      FLOOR2_ROOMS.length ? h('ol', { class: 'weeks floor2-rooms' }, ...FLOOR2_ROOMS.map((s) => weekCard(s, progress))) : '',
       h('div', { class: 'room-grid' },
         h('button', { class: 'room-btn', onclick: () => guard(renderPracticeRoom) },
           h('strong', {}, '복습실'), h('span', { class: 'small' }, '끝낸 회차 문제를 언제든 다시 풀어요. 연습이라 경험치는 없어요.')),
@@ -357,26 +362,43 @@ function kitchenHost() {
 }
 
 
+// 회차 카드 (부엌 주문판·2층 방 목록 공통). inKitchen이면 2층 회차는 "2층에서" 안내만
+function weekCard(s, progress, { inKitchen = false } = {}) {
+  const done = progress[s.id]?.cleared;
+  const st = stageStatus(s, { isAdmin: !!profile.is_admin, settings });
+  const playable = st === 'open' || st === 'preview';
+  const label = st === 'soon' ? opensLabel(s, settings) : '잠김';
+  const video = youtubeId(settings[s.id]?.video_url);
+  const upstairs = inKitchen && s.place === 'floor2';
+  const floor2Open = !!progress[FLOOR2_STAGE]?.cleared;
+  let actions;
+  if (upstairs && playable) {
+    actions = floor2Open
+      ? h('div', { class: 'week-actions' }, h('button', { class: 'btn primary small', onclick: () => guard(renderFloor2) }, `2층 ${josa(s.room, '으로', '로')}`))
+      : h('span', { class: 'small muted' }, '6회차를 끝내면 2층이 열려요');
+  } else if (playable) {
+    actions = h('div', { class: 'week-actions' },
+      h('button', { class: 'btn primary small', onclick: () => guard(() => runStage(s)) }, done ? '다시 하기' : '시작'),
+      video ? h('button', { class: 'btn ghost small', onclick: () => guard(() => renderVideo(s)) }, '영상 보기') : null,
+      h('button', { class: 'btn ghost small', onclick: () => guard(() => renderClue(s)) }, '암호 입력'));
+  } else {
+    actions = h('span', { class: 'small muted' }, done ? '완료' : label);
+  }
+  return h('li', { class: `week ${done ? 'is-done' : playable ? 'is-open' : 'is-locked'}` },
+    h('span', { class: 'week-num' }, `${s.week}회`),
+    h('div', { class: 'week-body' },
+      h('strong', {}, s.title),
+      h('span', { class: 'small muted' }, s.subject, s.place === 'floor2' ? ` · 2층 ${s.room}` : '',
+        st === 'preview' ? h('span', { class: 'nowrap' }, ` · 미리보기 (${opensLabel(s, settings)})`) : null)),
+    actions);
+}
+
+// 회차가 시작되는 곳: 2층 방 회차는 2층, 나머지는 부엌
+const homeOf = (s) => (s.place === 'floor2' ? { go: renderFloor2, label: '2층으로' } : { go: renderKitchen, label: '부엌으로' });
+
 async function renderKitchen() {
   const progress = await store.allProgress();
-  const list = h('ol', { class: 'weeks' }, ...SEASON1.map((s) => {
-    const done = progress[s.id]?.cleared;
-    const st = stageStatus(s, { isAdmin: !!profile.is_admin, settings });
-    const playable = st === 'open' || st === 'preview';
-    const label = st === 'soon' ? opensLabel(s, settings) : '잠김';
-    const video = youtubeId(settings[s.id]?.video_url);
-    return h('li', { class: `week ${done ? 'is-done' : playable ? 'is-open' : 'is-locked'}` },
-      h('span', { class: 'week-num' }, `${s.week}회`),
-      h('div', { class: 'week-body' },
-        h('strong', {}, s.title),
-        h('span', { class: 'small muted' }, s.subject, st === 'preview' ? h('span', { class: 'nowrap' }, ` · 미리보기 (${opensLabel(s, settings)})`) : null)),
-      playable
-        ? h('div', { class: 'week-actions' },
-          h('button', { class: 'btn primary small', onclick: () => guard(() => runStage(s)) }, done ? '다시 하기' : '시작'),
-          video ? h('button', { class: 'btn ghost small', onclick: () => guard(() => renderVideo(s)) }, '영상 보기') : null,
-          h('button', { class: 'btn ghost small', onclick: () => guard(() => renderClue(s)) }, '암호 입력'))
-        : h('span', { class: 'small muted' }, done ? '완료' : label));
-  }));
+  const list = h('ol', { class: 'weeks' }, ...SEASON1.map((s) => weekCard(s, progress, { inKitchen: true })));
 
   root.replaceChildren(
     statusBar(),
@@ -396,8 +418,8 @@ async function renderClue(stageMeta, afterResult) {
   const who = hostFor(stageMeta.week);
   const L = LINES[who];
   const already = await store.hasClue(mod.clue.id);
-  const backLabel = afterResult ? '휴게소로' : '부엌으로';
-  const goBack = () => guard(afterResult ? renderHub : renderKitchen);
+  const backLabel = afterResult ? '휴게소로' : homeOf(stageMeta).label;
+  const goBack = () => guard(afterResult ? renderHub : homeOf(stageMeta).go);
   const input = h('input', { id: 'clue', autocomplete: 'off' });
   const note = h('div', { class: 'talk' }, bubble(who, already ? L.clueAlready : mod.clue.ask));
   const submitBtn = h('button', { class: 'btn primary', type: 'submit' }, '확인');
@@ -619,13 +641,13 @@ function clueVideo(stageMeta) {
   return box;
 }
 
-async function renderVideo(stageMeta, back = renderKitchen) {
+async function renderVideo(stageMeta, back = homeOf(stageMeta).go) {
   const id = youtubeId(settings[stageMeta.id]?.video_url);
   root.replaceChildren(
     statusBar(),
     h('section', { class: 'panel video-panel' },
       h('header', { class: 'stage-head' },
-        h('button', { class: 'link', onclick: () => guard(back) }, back === renderKitchen ? '부엌으로' : '전시실로'),
+        h('button', { class: 'link', onclick: () => guard(back) }, back === renderGallery ? '전시실로' : homeOf(stageMeta).label),
         h('span', { class: 'stage-step' }, `${stageMeta.week}회차 영상`)),
       h('h2', {}, stageMeta.title),
       id ? videoBlock(id) : bubble('kkam', '이 회차 영상은 아직 준비 중인 거지.'),
@@ -641,7 +663,7 @@ async function runStage(meta) {
   const holder = h('div', { class: 'stage-holder' });
   root.replaceChildren(holder);
   mod.mount(holder, {
-    exit: () => guard(renderKitchen),
+    exit: () => guard(homeOf(meta).go),
     finish: (result) => guard(() => completeStage(meta, mod, result)),
   });
 }
