@@ -51,11 +51,11 @@ export function sceneSvg(open, { deco = false, unlock = '' } = {}) {
     <text x="303" y="147" text-anchor="middle" class="bus-label">승강장</text>
     ${lock(293, 176)}`)}
 
-  ${door('floor2', '위층 창문', `
+  ${door('floor2', '2층 창문', `
     <rect x="216" y="137" width="40" height="26" rx="3" fill="${open.floor2 ? '#F2A93B' : '#0F1630'}" stroke="${open.floor2 ? '#FBF6EC' : '#8A93B8'}" stroke-width="2"/>
     <path d="M236 137v26" stroke="${open.floor2 ? '#B67518' : '#27345C'}" stroke-width="2"/>
     ${unlock === 'floor2' ? '<rect class="floor2-dim" x="215" y="136" width="42" height="28" rx="3" fill="#0F1630"/>' : ''}
-    <text x="236" y="175" text-anchor="middle" class="door-label small">위층</text>`)}
+    <text x="236" y="175" text-anchor="middle" class="door-label small">2층</text>`)}
 
   ${open.floor2 ? `<g class="stairs" aria-hidden="true" pointer-events="none">
     <path d="M226 230h6v-10h6v-10h6v-10h6v-10h4" fill="none" stroke-width="3" stroke-linejoin="round"/>

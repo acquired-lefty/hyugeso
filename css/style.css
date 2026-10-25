@@ -252,6 +252,17 @@ input {
 @keyframes dim-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes stairs-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
+/* 피자 그림 (7회차 분수, js/stages/pizza.js) */
+.pizza { width: 100%; max-width: 120px; height: auto; display: block; margin: 0 auto; }
+.pizza .crust { fill: #D9A35B; }
+.pizza .slice { fill: #F7D98B; stroke: #7A5A2E; stroke-width: 1.6; stroke-linejoin: round; }
+.pizza .slice.is-shaded { fill: #E5658F; }
+.pick-btn.has-art { display: grid; gap: 4px; justify-items: center; padding: 8px 4px; }
+.pick-btn.has-art[aria-pressed="true"]::before { content: none; }
+.pick-btn.has-art[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--sodium) inset; }
+.pick-art { display: block; width: 100%; }
+.exp-figure .pizza { max-width: 150px; }
+
 /* ---------- 결과 ---------- */
 .result h2 { color: var(--sodium); }
 .levelup {

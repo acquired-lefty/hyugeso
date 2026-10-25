@@ -178,7 +178,14 @@ for (const [name, w] of WIDTHS) {
     try {
       await p.click('[data-door="kitchen"]');
       await p.waitForSelector('.weeks');
-      await p.locator('.week', { hasText: meta.title }).locator('button:text-is("시작")').click();
+      if (meta.place === 'floor2') {
+        // 2층 방 회차: 부엌 카드는 2층으로 안내 → 2층 방 목록에서 시작
+        await p.locator('.week', { hasText: meta.title }).locator('.btn').first().click();
+        await p.waitForSelector('.floor2-rooms');
+        await p.locator('.floor2-rooms .week', { hasText: meta.title }).locator('button:text-is("시작")').click();
+      } else {
+        await p.locator('.week', { hasText: meta.title }).locator('button:text-is("시작")').click();
+      }
       await p.waitForSelector('.stage h2');
       await checkOverflow(p, w, `${tag}/intro`);
       await clickText(p, mod.stage.intro.start);
@@ -356,7 +363,7 @@ async function extraChecks(p, w) {
     if (!/맞는 거지/.test(await p.locator('.talk p').innerText())) fail('floor2: 연습 정답 처리 안 됨');
     await checkOverflow(p, w, 'floor2/practice');
     await p.click('.actions button:text-is("복습실로")');
-    await p.click('button:text-is("위층으로")');
+    await p.click('button:text-is("2층으로")');
     await p.click('.room-btn:has-text("단서 전시실")');
     const words = await p.locator('.gallery .clue-word').allInnerTexts();
     if (!words.includes(ANSWERS['s1-w01'])) fail(`floor2: 전시실에 단서가 안 보임 (${words.join(',')})`);

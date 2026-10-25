@@ -322,13 +322,15 @@ const KINDS = {
     // s.art: 그림(SVG). 그림 속 [data-pick="번호"] 요소를 눌러도 같은 보기가 골라짐 (5회차 원의 선)
     const fig = s.art ? h('div', { class: 'exp-figure pick-figure', html: s.art }) : null;
     const toggle = (i) => { on[i] = !on[i]; refresh(); };
-    const btns = s.items.map(([name], i) => h('button', { class: 'pick-btn', 'aria-pressed': 'false', onclick: () => toggle(i) }, name));
+    // 보기마다 그림을 붙일 수 있음: items: [[이름, 정답 여부, SVG], …] (7회차 피자)
+    const btns = s.items.map(([name, , pic], i) => h('button', { class: `pick-btn ${pic ? 'has-art' : ''}`, 'aria-pressed': 'false', onclick: () => toggle(i) },
+      pic ? h('span', { class: 'pick-art', html: pic }) : '', name));
     function refresh() {
       btns.forEach((b, i) => b.setAttribute('aria-pressed', String(on[i])));
       fig?.querySelectorAll('[data-pick]').forEach((el) => el.classList.toggle('is-on', on[Number(el.dataset.pick)]));
     }
     fig?.querySelectorAll('[data-pick]').forEach((el) => el.addEventListener('click', () => { if (!btns[0].disabled) toggle(Number(el.dataset.pick)); }));
-    body.append(fig || '', h('p', { class: 'ask' }, s.ask), h('div', { class: `pick-grid ${s.art ? 'pick-grid-6' : ''}` }, ...btns));
+    body.append(fig || '', h('p', { class: 'ask' }, s.ask), h('div', { class: `pick-grid ${s.art || s.items.some((it) => it[2]) ? 'pick-grid-6' : ''}` }, ...btns));
     actions.replaceChildren(hintBtn, h('button', {
       class: 'btn primary',
       onclick: () => {
@@ -353,7 +355,7 @@ const KINDS = {
         onclick: () => {
           attempt();
           if (i === s.answer) correct(s.explain || '');
-          else wrong(s.wrongMsg || VOICE[r.who].notIt);
+          else wrong(s.wrongMsgs?.[i] || s.wrongMsg || VOICE[r.who].notIt);
         },
       }, c))));
     actions.replaceChildren(hintBtn);
@@ -457,6 +459,7 @@ const KINDS = {
     const { r, s, body, actions, hintBtn, say, attempt, correct, wrong } = ctx;
     const pad = numberPad([{ label: '□' }]);
     body.append(
+      s.art ? h('div', { class: 'exp-figure', html: s.art }) : '',
       h('p', { class: 'ask' }, s.ask),
       h('p', { class: 'div-eq', 'aria-label': s.eqLabel || s.eq }, s.eq),
       pad.el);
