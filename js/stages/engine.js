@@ -8,6 +8,7 @@
 //   rounds: [{ who, label?, line, steps: [step, …] }],   // 본 라운드 3개
 //   bonus: { offer, who, line, steps },                    // 숨은 주문 (선택)
 //   result: { clear, findClue },       // 결과 화면 대사 (선택, 없으면 characters.js LINES)
+//   shuffle: true,                     // 여러 항목을 나열하는 문제(칸 나누기·모두 고르기·짝·3지선다·복습 보기)를 할 때마다 섞어 보여 줌 (8회차부터 필수)
 // }
 // step.kind: boxes(상자 담기) / sort(칸 나누기) / pick(모두 고르기) / choice(고르기)
 //            deal(한 바퀴씩 나눠 담기) / div(몫·나머지) / fill(빈칸 숫자) / listen(소리 듣고 고르기)
@@ -65,6 +66,15 @@ export function numberPad(fields) {
 }
 export const keypad = (unit) => numberPad([{ unit }]);
 
+// 보기 순서를 섞어 보여 줌 (회차 cfg.shuffle 또는 step.shuffle). 정답 판정은 원래 순서 기준이라 그대로
+export const shuffled = (arr) => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i -= 1) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+};
+
+const mixIf = (on, arr) => (on ? shuffled(arr) : arr);
+
 const cookies = (n) => Array.from({ length: n }, () => h('span', { class: 'cookie', 'aria-hidden': 'true' }));
 
 export function mountStage(root, cfg, { finish, exit }) {
@@ -115,6 +125,7 @@ export function mountStage(root, cfg, { finish, exit }) {
 
       const ctx = {
         r, s, body, actions, hintBtn, say,
+        mix: s.shuffle ?? !!cfg.shuffle, // 보기 섞기
         offerFirst: () => { offerFirst = true; },
         attempt: () => { stats.attempts += 1; },
         correct(text) {
@@ -247,8 +258,11 @@ const KINDS = {
         class: 'pair-btn', 'aria-pressed': 'false',
         onclick: () => { chosen[i] = side; refresh(); },
       }, h('span', { class: 'pair-tag' }), pr[side]));
-      return { btns, el: h('li', { class: 'pair-row' }, h('span', { class: 'pair-num' }, `짝 ${i + 1}`), h('div', { class: 'pair-btns' }, ...btns)) };
+      const num = h('span', { class: 'pair-num' });
+      return { btns, num, el: h('li', { class: 'pair-row' }, num, h('div', { class: 'pair-btns' }, ...mixIf(ctx.mix, btns))) };
     });
+    const shown = mixIf(ctx.mix, rows);
+    shown.forEach((row, k) => { row.num.textContent = `짝 ${k + 1}`; });
     function refresh() {
       rows.forEach((row, i) => row.btns.forEach((b, j) => {
         const side = j === 0 ? 'a' : 'b';
@@ -258,7 +272,7 @@ const KINDS = {
         b.querySelector('.pair-tag').textContent = state === 'none' ? '' : s.bins[state === 'first' ? 0 : 1];
       }));
     }
-    body.append(h('p', { class: 'ask' }, s.ask), h('ol', { class: 'pair-list' }, ...rows.map((row) => row.el)));
+    body.append(h('p', { class: 'ask' }, s.ask), h('ol', { class: 'pair-list' }, ...shown.map((row) => row.el)));
     refresh();
     actions.replaceChildren(hintBtn, h('button', {
       class: 'btn primary',
@@ -291,7 +305,7 @@ const KINDS = {
     }
     body.append(
       h('p', { class: 'ask' }, s.ask),
-      h('ul', { class: 'sort-list' }, ...rows.map((row) => row.el)),
+      h('ul', { class: 'sort-list' }, ...mixIf(ctx.mix, rows).map((row) => row.el)),
       h('div', { class: 'bins' }, ...s.bins.map((b) => h('div', { class: `bin bin-${b.key}` }, h('span', {}, `${b.name} 칸`), countEls[b.key]))));
     refresh();
     actions.replaceChildren(
@@ -332,7 +346,7 @@ const KINDS = {
       fig?.querySelectorAll('[data-pick]').forEach((el) => el.classList.toggle('is-on', on[Number(el.dataset.pick)]));
     }
     fig?.querySelectorAll('[data-pick]').forEach((el) => el.addEventListener('click', () => { if (!btns[0].disabled) toggle(Number(el.dataset.pick)); }));
-    body.append(fig || '', h('p', { class: 'ask' }, s.ask), h('div', { class: `pick-grid ${s.art || s.items.some((it) => it[2]) ? 'pick-grid-6' : ''}` }, ...btns));
+    body.append(fig || '', h('p', { class: 'ask' }, s.ask), h('div', { class: `pick-grid ${s.art || s.items.some((it) => it[2]) ? 'pick-grid-6' : ''}` }, ...(ctx.mix ? shuffled(btns) : btns)));
     actions.replaceChildren(hintBtn, h('button', {
       class: 'btn primary',
       onclick: () => {
@@ -352,14 +366,14 @@ const KINDS = {
     body.append(
       s.art ? h('div', { class: 'exp-figure', html: s.art }) : '',
       h('p', { class: 'ask' }, s.ask),
-      h('div', { class: 'choice-list' }, ...s.choices.map((c, i) => h('button', {
+      h('div', { class: 'choice-list' }, ...mixIf(ctx.mix, s.choices.map((c, i) => h('button', {
         class: 'choice-btn',
         onclick: () => {
           attempt();
           if (i === s.answer) correct(s.explain || '');
           else wrong(s.wrongMsgs?.[i] || s.wrongMsg || VOICE[r.who].notIt);
         },
-      }, c))));
+      }, c)))));
     actions.replaceChildren(hintBtn);
   },
 
@@ -435,10 +449,10 @@ const KINDS = {
     body.append(s.from ? h('p', { class: 'muted small' }, s.from) : '', h('p', { class: 'ask' }, item.q));
     if (item.choices) {
       offerFirst(); // 3지선다는 첫 오답부터 힌트 권유
-      body.append(h('div', { class: 'choice-list' }, ...item.choices.map((c, i) => h('button', {
+      body.append(h('div', { class: 'choice-list' }, ...mixIf(ctx.mix, item.choices.map((c, i) => h('button', {
         class: 'choice-btn',
         onclick: () => { attempt(); if (i === item.answer) correct(`${c}. ${VOICE[r.who].right}`); else wrong(VOICE[r.who].notIt); },
-      }, c))));
+      }, c)))));
       actions.replaceChildren(hintBtn);
       return;
     }

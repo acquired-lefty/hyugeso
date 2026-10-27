@@ -31,6 +31,10 @@ async function enterNumbers(p, values) {
   }
 }
 
+// 보기 순서가 섞여도(stage.shuffle) 글자로 정확히 찾아 누름
+const exact = (t) => new RegExp(`^\\s*${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`);
+const btnText = (p, sel, text) => p.locator(sel).filter({ hasText: exact(text) });
+
 const clickText = (p, text) => p.locator(`.stage button:text-is("${text}")`).click();
 
 // 문제 형태별 자동 풀이 (정답 제출까지)
@@ -44,21 +48,22 @@ const SOLVE = {
     await clickText(p, s.send || '주방으로 보내기');
   },
   async pairs(p, s) {
-    for (let i = 0; i < s.pairs.length; i += 1) await p.locator('.pair-row').nth(i).locator('.pair-btn').nth(s.pairs[i].pick === 'a' ? 0 : 1).click();
+    for (const pr of s.pairs) await btnText(p, '.pair-btn', pr[pr.pick]).click();
     await clickText(p, '칸에 넣기');
   },
   async sort(p, s) {
-    for (let i = 0; i < s.items.length; i += 1) await p.locator('.sort-item').nth(i).locator(`.state-${s.items[i][1]}`).click();
+    for (const [name, key] of s.items) await p.locator('.sort-item').filter({ has: p.locator('.sort-name', { hasText: exact(name) }) }).locator(`.state-${key}`).click();
     await clickText(p, '칸에 넣기');
   },
   async pick(p, s) {
-    for (let i = 0; i < s.items.length; i += 1) if (s.items[i][1]) await p.locator('.pick-btn').nth(i).click();
+    // 보기 순서가 섞일 수 있어(shuffle) 글자로 찾아 누름
+    for (const [name, ok] of s.items) if (ok) await btnText(p, '.pick-btn', name).click();
     await clickText(p, '골랐어');
   },
-  async choice(p, s) { await p.locator('.choice-btn').nth(s.answer).click(); },
+  async choice(p, s) { await btnText(p, '.choice-btn', s.choices[s.answer]).click(); },
   async listen(p, s) {
     await p.locator('.sound-btn').first().click();
-    await p.locator('.choice-btn').nth(s.answer).click();
+    await btnText(p, '.choice-btn', s.choices[s.answer]).click();
   },
   async deal(p, s) {
     for (let i = 0; i < Math.floor(s.n / s.d); i += 1) await clickText(p, '한 바퀴 돌리기');
@@ -82,7 +87,7 @@ async function pressNumber(p, n) {
 
 // 복습 문제 하나 맞히기 (숫자 답 또는 3지선다)
 async function answerItem(p, item) {
-  if (item.choices) { await p.locator('.choice-btn').nth(item.answer).click(); return; }
+  if (item.choices) { await btnText(p, '.choice-btn', item.choices[item.answer]).click(); return; }
   await enterNumbers(p, [item.answer]);
   await clickText(p, '확인');
 }
@@ -98,6 +103,8 @@ function checkRules(meta, mod, answer) {
     if ((s.kind === 'choice' || s.kind === 'listen') && s.choices.length !== 3) fail(`${tag}: 보기 ${s.choices.length}개 (3개여야 함): ${s.ask}`);
     if (s.hints?.length !== 2 && s.kind !== 'review') fail(`${tag}: 힌트는 2단계여야 함: ${s.ask || s.kind}`);
   }
+  // 8회차부터: 나열형 문제 보기 섞기 필수
+  if (meta.week >= 8 && st.shuffle !== true) fail(`${tag}: 8회차부터는 stage.shuffle: true (보기 섞기)가 필요함`);
   const science = meta.subject.startsWith('과학');
   for (const item of mod.review || []) {
     if (item.choices && item.choices.length !== 3) fail(`${tag}: 복습 보기 ${item.choices.length}개: ${item.q}`);
@@ -119,7 +126,7 @@ function checkRules(meta, mod, answer) {
 async function tryWrong(p, s, tag) {
   if (s.kind !== 'choice' && s.kind !== 'listen') return;
   const wrongIdx = s.choices.findIndex((_, i) => i !== s.answer);
-  await p.locator('.choice-btn').nth(wrongIdx).click();
+  await btnText(p, '.choice-btn', s.choices[wrongIdx]).click();
   const said = await p.locator('.talk p').innerText();
   if (!/힌트/.test(said)) fail(`${tag}: 고르기 오답 뒤 힌트 권유가 없음 (${said})`);
 }

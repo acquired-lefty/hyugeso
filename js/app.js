@@ -6,7 +6,7 @@ import { SEASON1, TEAM_GOAL_ID, CLUE_TOTAL, stageStatus, opensLabel, hostFor } f
 import { LINES } from './characters.js';
 import { AVATAR_PARTS, avatarSvg, normalizeAvatar } from './avatar.js';
 import { youtubeId, embedUrl, watchUrl } from './video.js';
-import { keypad } from './stages/engine.js';
+import { keypad, shuffled } from './stages/engine.js';
 
 const root = document.getElementById('app');
 let profile = null;
@@ -272,6 +272,7 @@ function renderPractice(meta, mod) {
   const actions = h('div', { class: 'actions' });
   const again = h('button', { class: 'btn ghost', onclick: () => renderPractice(meta, mod) }, '다른 문제');
   const answer = reviewAnswer(item, {
+    mix: !!mod.stage?.shuffle,
     onRight: () => {
       say(`${item.choices ? item.choices[item.answer] : `${item.answer}${item.unit}`}. ${L.practiceOk}`);
       actions.replaceChildren(again, h('button', { class: 'btn primary', onclick: () => guard(renderPracticeRoom) }, '복습실로'));
@@ -293,7 +294,8 @@ function renderPractice(meta, mod) {
 
 // 복습 문제 답하기 칸: 숫자 답은 숫자 버튼, 보기가 있으면 3지선다
 // onWrong('more' | 'less' | 'no'), 답하면 버튼을 잠그고, unlock()으로 다시 풀 수 있게 함
-function reviewAnswer(item, { onRight, onWrong, onEmpty }) {
+// mix: 보기 순서 섞기 (회차 stage.shuffle, 8회차부터)
+function reviewAnswer(item, { onRight, onWrong, onEmpty, mix = false }) {
   let el;
   let get;
   const lock = (on) => el.querySelectorAll('button').forEach((b) => { b.disabled = on; });
@@ -303,7 +305,8 @@ function reviewAnswer(item, { onRight, onWrong, onEmpty }) {
     onWrong(item.choices ? 'no' : v > item.answer ? 'more' : 'less');
   };
   if (item.choices) {
-    el = h('div', { class: 'choice-list' }, ...item.choices.map((c, i) => h('button', { class: 'choice-btn', onclick: () => judge(i) }, c)));
+    const btns = item.choices.map((c, i) => h('button', { class: 'choice-btn', onclick: () => judge(i) }, c));
+    el = h('div', { class: 'choice-list' }, ...(mix ? shuffled(btns) : btns));
     return { el, buttons: [], lock, judge };
   }
   const pad = keypad(item.unit);
@@ -540,6 +543,7 @@ async function renderReview(review) {
 
   const shown = () => (item.choices ? item.choices[item.answer] : `${item.answer}${item.unit}`);
   const answer = reviewAnswer(item, {
+    mix: !!found.mod.stage?.shuffle,
     onEmpty: () => say(item.choices ? L.pickFirst : L.typeFirst),
     onRight: () => guard(async () => {
       tries += 1;
