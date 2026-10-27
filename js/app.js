@@ -133,6 +133,7 @@ const DOOR_LINE = {
   arcade: '오락실은 아직 잠겨 있는 거지. 부엌 주문부터.',
   bus: '버스는 아직 안 오는 거지. 시간표가 비어 있어.',
   floor2: '2층은 6회차 주문을 끝내면 불이 켜지는 거지.',
+  rooftop: '옥상은 2층 계단으로 올라가는 거지. 6회차 주문을 끝내야 열리는 거지.',
   basement: '…거긴 아직. 12회차까지 단서를 모아야 하는 거지.',
 };
 
@@ -145,6 +146,7 @@ async function renderHub() {
   const open = {
     kitchen: true, arcade: false, bus: false,
     floor2: !!progress[FLOOR2_STAGE]?.cleared,
+    rooftop: !!progress[FLOOR2_STAGE]?.cleared, // 옥상은 2층에서 이어짐
     basement: !!progress[BASEMENT_STAGE]?.cleared,
   };
 
@@ -165,6 +167,7 @@ async function renderHub() {
       const key = el.dataset.door;
       if (key === 'kitchen') guard(renderKitchen);
       else if (key === 'floor2' && open.floor2) guard(renderFloor2);
+      else if (key === 'rooftop' && open.rooftop) guard(renderRooftop);
       else if (key === 'basement' && open.basement) guard(renderBasement);
       else tip.replaceChildren(bubble('kkam', DOOR_LINE[open[key] ? `${key}Open` : key] || DOOR_LINE[key]));
     };
@@ -197,8 +200,25 @@ const pageHead = (label, back) => h('header', { class: 'stage-head' },
   h('button', { class: 'link', onclick: () => guard(back) }, back === renderHub ? '휴게소로' : '2층으로'),
   h('span', { class: 'stage-step' }, label));
 
-// 2층 방에서 하는 회차 (stages/index.js의 place: 'floor2')
-const FLOOR2_ROOMS = SEASON1.filter((s) => s.place === 'floor2');
+// 2층·옥상 방에서 하는 회차 (stages/index.js의 place: 'floor2' | 'rooftop'). 둘 다 6회차 클리어로 열림
+const roomsAt = (place) => SEASON1.filter((s) => s.place === place);
+const PLACE_NAME = { floor2: '2층', rooftop: '옥상' };
+
+// 2층에서 계단으로 이어지는 옥상 정원
+async function renderRooftop() {
+  const progress = await store.allProgress();
+  const rooms = roomsAt('rooftop');
+  root.replaceChildren(
+    statusBar(),
+    h('section', { class: 'panel rooftop' },
+      pageHead('옥상', renderHub),
+      h('h2', {}, '휴게소 옥상 정원'),
+      bubble('kkam', '2층 계단 끝에 옥상 정원이 있는 거지. 밤바람이 시원한 거지.'),
+      rooms.length ? h('ol', { class: 'weeks place-rooms' }, ...rooms.map((s) => weekCard(s, progress))) : '',
+      h('div', { class: 'room-grid' },
+        h('button', { class: 'room-btn', onclick: () => guard(renderFloor2) },
+          h('strong', {}, '2층으로 내려가기'), h('span', { class: 'small' }, '가게들과 복습실, 단서 전시실이 있어요.')))));
+}
 
 async function renderFloor2() {
   const progress = await store.allProgress();
@@ -208,8 +228,10 @@ async function renderFloor2() {
       pageHead('2층', renderHub),
       h('h2', {}, '휴게소 2층 (옛 푸드코트)'),
       bubble('kkam', '2층 불이 켜진 거지. 가게마다 그 회차 주문이 있고, 지난 문제를 다시 푸는 방과 단서를 모아 둔 방도 있는 거지.'),
-      FLOOR2_ROOMS.length ? h('ol', { class: 'weeks floor2-rooms' }, ...FLOOR2_ROOMS.map((s) => weekCard(s, progress))) : '',
+      roomsAt('floor2').length ? h('ol', { class: 'weeks floor2-rooms place-rooms' }, ...roomsAt('floor2').map((s) => weekCard(s, progress))) : '',
       h('div', { class: 'room-grid' },
+        h('button', { class: 'room-btn', onclick: () => guard(renderRooftop) },
+          h('strong', {}, '옥상 정원'), h('span', { class: 'small' }, '계단을 올라가면 옥상 정원이 있어요.')),
         h('button', { class: 'room-btn', onclick: () => guard(renderPracticeRoom) },
           h('strong', {}, '복습실'), h('span', { class: 'small' }, '끝낸 회차 문제를 언제든 다시 풀어요. 연습이라 경험치는 없어요.')),
         h('button', { class: 'room-btn', onclick: () => guard(renderGallery) },
@@ -369,13 +391,13 @@ function weekCard(s, progress, { inKitchen = false } = {}) {
   const playable = st === 'open' || st === 'preview';
   const label = st === 'soon' ? opensLabel(s, settings) : '잠김';
   const video = youtubeId(settings[s.id]?.video_url);
-  const upstairs = inKitchen && s.place === 'floor2';
+  const upstairs = inKitchen && s.place;
   const floor2Open = !!progress[FLOOR2_STAGE]?.cleared;
   let actions;
   if (upstairs && playable) {
     actions = floor2Open
-      ? h('div', { class: 'week-actions' }, h('button', { class: 'btn primary small', onclick: () => guard(renderFloor2) }, `2층 ${josa(s.room, '으로', '로')}`))
-      : h('span', { class: 'small muted' }, '6회차를 끝내면 2층이 열려요');
+      ? h('div', { class: 'week-actions' }, h('button', { class: 'btn primary small', onclick: () => guard(homeOf(s).go) }, `${PLACE_NAME[s.place]} ${josa(s.room, '으로', '로')}`))
+      : h('span', { class: 'small muted' }, `6회차를 끝내면 ${PLACE_NAME[s.place]}이 열려요`);
   } else if (playable) {
     actions = h('div', { class: 'week-actions' },
       h('button', { class: 'btn primary small', onclick: () => guard(() => runStage(s)) }, done ? '다시 하기' : '시작'),
@@ -388,13 +410,16 @@ function weekCard(s, progress, { inKitchen = false } = {}) {
     h('span', { class: 'week-num' }, `${s.week}회`),
     h('div', { class: 'week-body' },
       h('strong', {}, s.title),
-      h('span', { class: 'small muted' }, s.subject, s.place === 'floor2' ? ` · 2층 ${s.room}` : '',
+      h('span', { class: 'small muted' }, s.subject, s.place ? ` · ${PLACE_NAME[s.place]} ${s.room}` : '',
         st === 'preview' ? h('span', { class: 'nowrap' }, ` · 미리보기 (${opensLabel(s, settings)})`) : null)),
     actions);
 }
 
-// 회차가 시작되는 곳: 2층 방 회차는 2층, 나머지는 부엌
-const homeOf = (s) => (s.place === 'floor2' ? { go: renderFloor2, label: '2층으로' } : { go: renderKitchen, label: '부엌으로' });
+// 회차가 시작되는 곳: 2층·옥상 방 회차는 그곳, 나머지는 부엌
+const homeOf = (s) => ({
+  floor2: { go: renderFloor2, label: '2층으로' },
+  rooftop: { go: renderRooftop, label: '옥상으로' },
+}[s.place] || { go: renderKitchen, label: '부엌으로' });
 
 async function renderKitchen() {
   const progress = await store.allProgress();
