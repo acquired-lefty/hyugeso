@@ -331,6 +331,9 @@ input {
 .sort-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
 .sort-item { display: grid; gap: 8px; padding: 10px 12px; border-radius: 12px; background: #fff; border: 2px solid #E6DCC6; }
 .sort-name { font-weight: 700; }
+.sort-item.has-art { grid-template-columns: 56px 1fr; align-items: center; }
+.sort-item.has-art .state-group { grid-column: 1 / -1; }
+.sort-art svg { width: 56px; height: 56px; display: block; }
 .state-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .state-btn {
   font: inherit; font-size: 16px; font-weight: 700; min-height: 44px; border-radius: 10px; cursor: pointer;

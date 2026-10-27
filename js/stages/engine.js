@@ -281,7 +281,9 @@ const KINDS = {
         class: `state-btn state-${b.key}`, 'aria-pressed': 'false',
         onclick: () => { picked[i] = b.key; refresh(); },
       }, b.name));
-      return { btns, el: h('li', { class: 'sort-item' }, h('span', { class: 'sort-name' }, name), h('div', { class: 'state-group', role: 'group', 'aria-label': `${name} 칸 고르기` }, ...btns)) };
+      return { btns, el: h('li', { class: `sort-item ${s.items[i][2] ? 'has-art' : ''}` },
+        // 물건마다 그림을 붙일 수 있음: items: [[이름, 칸, SVG]] (8회차 동물)
+        s.items[i][2] ? h('span', { class: 'sort-art', html: s.items[i][2] }) : '', h('span', { class: 'sort-name' }, name), h('div', { class: 'state-group', role: 'group', 'aria-label': `${name} 칸 고르기` }, ...btns)) };
     });
     function refresh() {
       rows.forEach((row, i) => row.btns.forEach((b, j) => b.setAttribute('aria-pressed', String(picked[i] === s.bins[j].key))));

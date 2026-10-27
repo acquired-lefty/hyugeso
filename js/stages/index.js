@@ -15,7 +15,7 @@ export const SEASON1 = [
   { id: 's1-w05', week: 5, title: '둥근 뚜껑의 비밀', subject: '수학: 원', opensAt: '2026-10-19', open: true, load: () => import('./s1-w05.js') },
   { id: 's1-w06', week: 6, title: '중간 미션: 매점 메뉴판', subject: '수학: 돈 계산', opensAt: '2026-10-22', open: true, load: () => import('./s1-w06.js') },
   { id: 's1-w07', week: 7, title: '2층 피자 가게의 분수', subject: '수학: 분수', opensAt: '2026-10-26', open: true, load: () => import('./s1-w07.js'), place: 'floor2', room: '피자 가게' },
-  { id: 's1-w08', week: 8, title: '동물 손님의 주문서', subject: '과학: 동물의 생활', opensAt: '2026-10-29', open: false },
+  { id: 's1-w08', week: 8, title: '옥상의 작은 손님', subject: '과학: 동물의 생활', opensAt: '2026-10-29', open: true, load: () => import('./s1-w08.js'), place: 'floor2', room: '옥상 정원' },
   { id: 's1-w09', week: 9, title: '계량컵이 거짓말을?', subject: '수학: 들이와 무게', opensAt: '2026-11-02', open: false },
   { id: 's1-w10', week: 10, title: '초코 케이크 흙 실험', subject: '과학: 지표의 변화', opensAt: '2026-11-05', open: false },
   { id: 's1-w11', week: 11, title: '손님 주문 그래프', subject: '수학: 자료의 정리', opensAt: '2026-11-09', open: false },
