@@ -44,6 +44,7 @@ js/stages/index.js    시즌1 회차 목록 (open 플래그로 공개 관리)
 js/stages/engine.js   회차 공통 틀 (들어가기·라운드·힌트·숨은 주문, 문제 형태별 화면)
 js/stages/s1-wNN.js   회차별 스테이지 (문제 내용만 적고 engine의 mountStage 사용)
 js/stages/pizza.js    피자 그림 SVG (조각 수·크기·색칠을 데이터로, 7회차)
+js/stages/animals.js  단순한 동물 그림 SVG (8회차 칸 나누기)
 js/stages/locks.js    지하 잠긴 방 자물쇠 (시즌 회차 목록을 받아 단서로 여는 화면, 12회차에서 사용)
 js/sound.js           효과음 재생 (버튼을 눌러야 재생)
 assets/sounds/        효과음 파일 + SOURCES.md (출처·이용 조건 기록)
@@ -79,7 +80,7 @@ export default {
   mount(root, ctx) { mountStage(root, this.stage, ctx); },   // finish({ attempts, hints, bonus })는 engine이 부름
 };
 ```
-- 공통 옵션: pick 보기마다 그림(`items: [[이름, 정답, SVG]]`), choice 틀린 보기마다 다른 피드백(`wrongMsgs`), fill 위에 그림(`art`).
+- 공통 옵션: pick·sort 보기마다 그림(`items: [[이름, 정답 또는 칸, SVG]]`), choice 틀린 보기마다 다른 피드백(`wrongMsgs`), fill 위에 그림(`art`).
 - 문제 형태(`step.kind`): boxes(상자 담기, `target`·`names`·`art`·`cards`로 돈 같은 다른 단위도 가능: 6회차) / sort(칸 나누기) / pick(모두 고르기, `art` 그림의 `[data-pick]` 요소도 누를 수 있음) / pairs(짝마다 하나 고르기, 칸 나누기의 짝 버전) / choice(3지선다) / deal(한 바퀴씩 나눠 담기) / div(몫·나머지, 숫자 버튼) / fill(빈칸 숫자, 숫자 버튼) / listen(소리 듣고 3지선다) / review(복습 문제 pool에서 하나, 6회차 중간 복습). 새 형태가 필요하면 `engine.js`의 `KINDS`와 `tests/e2e.mjs`의 `SOLVE`에 함께 추가한다.
 - 소리: `listen`의 `sounds: [{ label, src: 'assets/sounds/s1-wNN/파일.mp3' }]`. 파일을 넣을 때마다 `assets/sounds/SOURCES.md`에 출처·조건을 적는다.
 - 자동 검사: `tests/e2e.mjs`가 `stage` 설정의 정답으로 공개된 모든 회차를 세 폭에서 끝까지 풀어 본다. 로컬은 `python3 -m http.server 8000` 후 `node tests/e2e.mjs`.
@@ -147,7 +148,7 @@ export default {
 | 5 | 둥근 뚜껑의 비밀 | 수학 원 | 그림 속 반지름 고르기, 반지름·지름 빈칸, 네모·둥근 뚜껑, (숨은) 통영 맨홀 뚜껑 (완성, 암호 `보름달문`) |
 | 6 | 중간 미션: 매점 메뉴판 | 수학 돈 계산(덧셈·뺄셈·곱셈·나눗셈) | 합계 숫자 버튼, 거스름돈 지폐·동전 담기, 나눠 내기, (숨은) 동전 톱니, 위층 해금 연출 (완성, 암호 `이층열쇠`) |
 | 7 | 2층 피자 가게의 분수 | 수학 분수 | 똑같이 나눈 피자 고르기, 단위분수 비교, 색칠 조각 분모, (숨은) 1/3 파운드 햄버거 — 2층 피자 가게 (완성, 암호 `달빛화덕`) |
-| 8 | 동물 손님의 주문서 | 과학 동물의 생활 | 동물 먹이 매칭 |
+| 8 | 옥상의 작은 손님 | 과학 동물의 생활 | 동물 사는 곳 나누기(그림), 사막 특징 고르기, 낙타 혹, (숨은) 사막여우의 밤 — 2층에서 이어지는 옥상 정원 (완성, 암호 `모래여우`) |
 | 9 | 계량컵이 거짓말을? | 수학 들이와 무게 | 계량 방탈출 |
 | 10 | 초코 케이크 흙 실험 | 과학 지표의 변화 | 흐르는 물 퍼즐 |
 | 11 | 손님 주문 그래프 | 수학 자료의 정리 | 그림그래프 만들기 |
@@ -156,7 +157,7 @@ export default {
 ## 다음 작업 (우선순위)
 1. ~~대표님용 학습 대시보드 (`admin.html`)~~ 완료. 메모는 `admin_notes` 테이블 (`supabase/04_admin_notes.sql`). 기록 내보내기(백업) 버튼 포함.
 2. ~~복습 퀴즈 출제 화면~~ 완료 (`js/app.js`의 `renderReview`, 문제는 각 스테이지 파일의 `review`).
-3. ~~2~7회차 스테이지~~ 완료. 다음은 8회차 `s1-w08.js` (구성문과 암호를 대표님께 먼저 받기).
+3. ~~2~8회차 스테이지~~ 완료. 다음은 9회차 `s1-w09.js` (구성문과 암호를 대표님께 먼저 받기).
 4. ~~공간 해금·공동 목표 보상·단서 도감·회차 날짜 공개·서버 경험치~~ 완료.
 5. ~~회차 공개 일정(월·목)·관리자 지정, 가입 신청·승인, 프로필(아바타·닉네임), 회차 영상~~ 완료.
 
