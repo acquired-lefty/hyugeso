@@ -3,7 +3,7 @@
 // opensAt: 기본 공개 날짜(한국 시간 0시). 매주 월·목 공개 일정 (3회차 2026-10-12 시작)
 //   대표님이 대시보드 "회차 설정"에서 날짜를 바꾸면 그 날짜(stage_settings)가 우선함
 // 대표님(관리자) 계정은 공개 날짜 전에도 미리 해 볼 수 있음
-// place: 'floor2'면 2층(옛 푸드코트)의 방에서 시작 (6회차 클리어로 2층이 열려야 들어감), room: 방 이름
+// place: 'floor2'면 2층(옛 푸드코트), 'rooftop'이면 2층에서 이어지는 옥상 정원의 방에서 시작 (6회차 클리어로 열림), room: 방 이름
 export const TEAM_GOAL_ID = 's1-kitchen';
 export const CLUE_TOTAL = 12;
 
@@ -15,7 +15,7 @@ export const SEASON1 = [
   { id: 's1-w05', week: 5, title: '둥근 뚜껑의 비밀', subject: '수학: 원', opensAt: '2026-10-19', open: true, load: () => import('./s1-w05.js') },
   { id: 's1-w06', week: 6, title: '중간 미션: 매점 메뉴판', subject: '수학: 돈 계산', opensAt: '2026-10-22', open: true, load: () => import('./s1-w06.js') },
   { id: 's1-w07', week: 7, title: '2층 피자 가게의 분수', subject: '수학: 분수', opensAt: '2026-10-26', open: true, load: () => import('./s1-w07.js'), place: 'floor2', room: '피자 가게' },
-  { id: 's1-w08', week: 8, title: '옥상의 작은 손님', subject: '과학: 동물의 생활', opensAt: '2026-10-29', open: true, load: () => import('./s1-w08.js'), place: 'floor2', room: '옥상 정원' },
+  { id: 's1-w08', week: 8, title: '옥상의 작은 손님', subject: '과학: 동물의 생활', opensAt: '2026-10-29', open: true, load: () => import('./s1-w08.js'), place: 'rooftop', room: '사막 화단' },
   { id: 's1-w09', week: 9, title: '계량컵이 거짓말을?', subject: '수학: 들이와 무게', opensAt: '2026-11-02', open: false },
   { id: 's1-w10', week: 10, title: '초코 케이크 흙 실험', subject: '과학: 지표의 변화', opensAt: '2026-11-05', open: false },
   { id: 's1-w11', week: 11, title: '손님 주문 그래프', subject: '수학: 자료의 정리', opensAt: '2026-11-09', open: false },

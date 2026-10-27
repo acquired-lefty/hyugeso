@@ -178,11 +178,11 @@ for (const [name, w] of WIDTHS) {
     try {
       await p.click('[data-door="kitchen"]');
       await p.waitForSelector('.weeks');
-      if (meta.place === 'floor2') {
-        // 2층 방 회차: 부엌 카드는 2층으로 안내 → 2층 방 목록에서 시작
+      if (meta.place) {
+        // 2층·옥상 방 회차: 부엌 카드는 2층으로 안내 → 2층 방 목록에서 시작
         await p.locator('.week', { hasText: meta.title }).locator('.btn').first().click();
-        await p.waitForSelector('.floor2-rooms');
-        await p.locator('.floor2-rooms .week', { hasText: meta.title }).locator('button:text-is("시작")').click();
+        await p.waitForSelector('.place-rooms');
+        await p.locator('.place-rooms .week', { hasText: meta.title }).locator('button:text-is("시작")').click();
       } else {
         await p.locator('.week', { hasText: meta.title }).locator('button:text-is("시작")').click();
       }
