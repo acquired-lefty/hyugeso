@@ -107,6 +107,7 @@ export default {
     episode: '4회차',
     title: '유리 창고의 도레미',
     host: 'tipo',
+    shuffle: true, // 나열형 문제의 보기를 할 때마다 섞음
     intro: { line: '지하 유리 창고에 온 걸 환영해. 오늘은 귀로 푸는 문제야. Okay?', start: '창고 들어가기' },
     rounds: ROUNDS,
     bonus: BONUS,

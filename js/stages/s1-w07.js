@@ -56,7 +56,8 @@ const ROUNDS = [
     steps: [{
       kind: 'pick',
       ask: '똑같이 나눈 피자를 모두 골라 주는 거지.',
-      items: PIZZAS.map((p, i) => [`피자 ${NUM[i]}`, p.equal, pizzaSvg({ cuts: p.cuts, label: `피자 ${NUM[i]}` })]),
+      numbered: '피자', // 섞인 뒤 보이는 순서대로 피자 ①~⑥
+      items: PIZZAS.map((p, i) => [`피자 ${NUM[i]}`, p.equal, pizzaSvg({ cuts: p.cuts, label: '피자 그림' })]),
       okText: '맞는 거지.',
       msgs: {
         many: '음… 똑같지 않은 것도 골랐어.',
@@ -121,6 +122,7 @@ export default {
     episode: '7회차',
     title: '2층 피자 가게의 분수',
     host: 'kkam',
+    shuffle: true, // 나열형 문제의 보기를 할 때마다 섞음
     intro: { line: '2층에 온 걸 환영하는 거지. 오늘은 피자를 나눠 볼 거야.', start: '피자 가게 들어가기' },
     rounds: ROUNDS,
     bonus: BONUS,

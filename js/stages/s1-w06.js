@@ -122,6 +122,7 @@ export default {
     episode: '6회차',
     title: '중간 미션: 매점 메뉴판',
     host: 'ddal',
+    shuffle: true, // 나열형 문제의 보기를 할 때마다 섞음
     intro: { line: '중간 미션입니다만. 오늘은 제가 매점 계산을 맡겼습니다. 잘 부탁드립니다.', start: '계산대 열기' },
     rounds: ROUNDS,
     bonus: BONUS,

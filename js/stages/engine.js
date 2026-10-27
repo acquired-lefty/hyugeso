@@ -74,6 +74,7 @@ export const shuffled = (arr) => {
 };
 
 const mixIf = (on, arr) => (on ? shuffled(arr) : arr);
+const CIRCLED = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
 
 const cookies = (n) => Array.from({ length: n }, () => h('span', { class: 'cookie', 'aria-hidden': 'true' }));
 
@@ -255,11 +256,11 @@ const KINDS = {
     const chosen = s.pairs.map(() => null);
     const rows = s.pairs.map((pr, i) => {
       const btns = ['a', 'b'].map((side) => h('button', {
-        class: 'pair-btn', 'aria-pressed': 'false',
+        class: 'pair-btn', 'aria-pressed': 'false', 'data-side': side,
         onclick: () => { chosen[i] = side; refresh(); },
       }, h('span', { class: 'pair-tag' }), pr[side]));
       const num = h('span', { class: 'pair-num' });
-      return { btns, num, el: h('li', { class: 'pair-row' }, num, h('div', { class: 'pair-btns' }, ...mixIf(ctx.mix, btns))) };
+      return { btns, num, el: h('li', { class: 'pair-row', 'data-i': i }, num, h('div', { class: 'pair-btns' }, ...mixIf(ctx.mix, btns))) };
     });
     const shown = mixIf(ctx.mix, rows);
     shown.forEach((row, k) => { row.num.textContent = `짝 ${k + 1}`; });
@@ -295,7 +296,7 @@ const KINDS = {
         class: `state-btn state-${b.key}`, 'aria-pressed': 'false',
         onclick: () => { picked[i] = b.key; refresh(); },
       }, b.name));
-      return { btns, el: h('li', { class: `sort-item ${s.items[i][2] ? 'has-art' : ''}` },
+      return { btns, el: h('li', { class: `sort-item ${s.items[i][2] ? 'has-art' : ''}`, 'data-i': i },
         // 물건마다 그림을 붙일 수 있음: items: [[이름, 칸, SVG]] (8회차 동물)
         s.items[i][2] ? h('span', { class: 'sort-art', html: s.items[i][2] }) : '', h('span', { class: 'sort-name' }, name), h('div', { class: 'state-group', role: 'group', 'aria-label': `${name} 칸 고르기` }, ...btns)) };
     });
@@ -339,14 +340,17 @@ const KINDS = {
     const fig = s.art ? h('div', { class: 'exp-figure pick-figure', html: s.art }) : null;
     const toggle = (i) => { on[i] = !on[i]; refresh(); };
     // 보기마다 그림을 붙일 수 있음: items: [[이름, 정답 여부, SVG], …] (7회차 피자)
-    const btns = s.items.map(([name, , pic], i) => h('button', { class: `pick-btn ${pic ? 'has-art' : ''}`, 'aria-pressed': 'false', onclick: () => toggle(i) },
-      pic ? h('span', { class: 'pick-art', html: pic }) : '', name));
+    // s.numbered: '피자'면 보이는 순서대로 "피자 ①, ②…" 이름을 붙임 (섞여도 번호가 차례대로 보이게)
+    const order = mixIf(ctx.mix, s.items.map((_, i) => i));
+    const pos = Object.fromEntries(order.map((i, k) => [i, k]));
+    const btns = s.items.map(([name, , pic], i) => h('button', { class: `pick-btn ${pic ? 'has-art' : ''}`, 'aria-pressed': 'false', 'data-i': i, onclick: () => toggle(i) },
+      pic ? h('span', { class: 'pick-art', html: pic }) : '', s.numbered ? `${s.numbered} ${CIRCLED[pos[i]]}` : name));
     function refresh() {
       btns.forEach((b, i) => b.setAttribute('aria-pressed', String(on[i])));
       fig?.querySelectorAll('[data-pick]').forEach((el) => el.classList.toggle('is-on', on[Number(el.dataset.pick)]));
     }
     fig?.querySelectorAll('[data-pick]').forEach((el) => el.addEventListener('click', () => { if (!btns[0].disabled) toggle(Number(el.dataset.pick)); }));
-    body.append(fig || '', h('p', { class: 'ask' }, s.ask), h('div', { class: `pick-grid ${s.art || s.items.some((it) => it[2]) ? 'pick-grid-6' : ''}` }, ...(ctx.mix ? shuffled(btns) : btns)));
+    body.append(fig || '', h('p', { class: 'ask' }, s.ask), h('div', { class: `pick-grid ${s.art || s.items.some((it) => it[2]) ? 'pick-grid-6' : ''}` }, ...order.map((i) => btns[i])));
     actions.replaceChildren(hintBtn, h('button', {
       class: 'btn primary',
       onclick: () => {
@@ -367,7 +371,7 @@ const KINDS = {
       s.art ? h('div', { class: 'exp-figure', html: s.art }) : '',
       h('p', { class: 'ask' }, s.ask),
       h('div', { class: 'choice-list' }, ...mixIf(ctx.mix, s.choices.map((c, i) => h('button', {
-        class: 'choice-btn',
+        class: 'choice-btn', 'data-i': i,
         onclick: () => {
           attempt();
           if (i === s.answer) correct(s.explain || '');
@@ -450,7 +454,7 @@ const KINDS = {
     if (item.choices) {
       offerFirst(); // 3지선다는 첫 오답부터 힌트 권유
       body.append(h('div', { class: 'choice-list' }, ...mixIf(ctx.mix, item.choices.map((c, i) => h('button', {
-        class: 'choice-btn',
+        class: 'choice-btn', 'data-i': i,
         onclick: () => { attempt(); if (i === item.answer) correct(`${c}. ${VOICE[r.who].right}`); else wrong(VOICE[r.who].notIt); },
       }, c)))));
       actions.replaceChildren(hintBtn);

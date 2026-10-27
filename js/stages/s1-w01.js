@@ -6,6 +6,7 @@ const STAGE = {
   episode: '1회차',
   title: '레시피 3배로!',
   host: 'kkam',
+  shuffle: true, // 나열형 문제의 보기를 할 때마다 섞음
   intro: {
     line: '어서 와. 오늘은 주문 준비인 거지. 레시피에 적힌 양에 주문 수를 곱해서, 창고에서 딱 맞게 꺼내 오면 되는 거지.',
     start: '창고 들어가기',

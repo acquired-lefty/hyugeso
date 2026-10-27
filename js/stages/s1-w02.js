@@ -32,6 +32,7 @@ const STAGE = {
   episode: '2회차',
   title: '냉동고의 빈 병',
   host: 'kkam',
+  shuffle: true, // 나열형 문제의 보기를 할 때마다 섞음
   intro: {
     line: '…냉동고에 빈 병이 하나 있는 거지. 정말 “빈” 병일까. 오늘은 고체, 액체, 기체를 알아보는 거지.',
     start: '냉동고 열기',

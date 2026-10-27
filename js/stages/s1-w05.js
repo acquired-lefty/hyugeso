@@ -129,6 +129,7 @@ export default {
     episode: '5회차',
     title: '둥근 뚜껑의 비밀',
     host: 'ddal',
+    shuffle: true, // 나열형 문제의 보기를 할 때마다 섞음
     intro: { line: '주차장 맨홀에 오신 걸 환영합니다만. 오늘은 제가 안내합니다.', start: '뚜껑 열기' },
     rounds: ROUNDS,
     bonus: BONUS,

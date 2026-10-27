@@ -1,25 +1,22 @@
 # 역할: 풀 리퀘스트마다 자바스크립트 문법 확인 + 체험 모드로 모든 회차를 끝까지 실행 (CI)
 # 실패하면 머지하지 않고 고친 뒤 다시 확인함 (CLAUDE.md "작업 흐름")
-# runs-on은 ubuntu-24.04로 고정: ubuntu-latest가 Ubuntu 26으로 바뀌며 Playwright 설치가 실패함(2026-10)
+# 속도: 브라우저가 미리 설치된 Playwright 공식 이미지를 써서 설치 시간(약 7분)을 없앰.
+#       main에 머지된 뒤에는 같은 검사를 다시 돌리지 않음 (PR에서 이미 통과한 코드).
 name: Check
 
 on:
   pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   syntax:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
       - name: JavaScript 문법 확인
         run: |
           status=0
-          for f in js/*.js js/stages/*.js; do
+          for f in js/*.js js/stages/*.js tests/*.mjs; do
             node --check "$f" || { echo "문법 오류: $f"; status=1; }
           done
           exit $status
@@ -27,18 +24,16 @@ jobs:
   play:
     runs-on: ubuntu-24.04
     needs: syntax
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+      options: --user 1001
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Playwright 설치
-        run: |
-          npm install --no-save --no-package-lock playwright@1.56.1
-          npx playwright install --with-deps chromium
+      - name: Playwright 라이브러리 (브라우저는 이미지에 들어 있음)
+        run: npm install --no-save --no-package-lock playwright@1.56.1
       - name: 모든 회차 끝까지 실행 (휴대폰·태블릿·PC 폭)
         run: |
-          python3 -m http.server 8000 >/dev/null 2>&1 &
+          node tests/serve.mjs 8000 &
           sleep 1
           mkdir -p shots
           SHOTS=shots node tests/e2e.mjs
