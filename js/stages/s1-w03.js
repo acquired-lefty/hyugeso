@@ -88,6 +88,7 @@ export default {
     episode: '3회차',
     title: '쿠키 공평하게 나누기',
     host: 'tipo',
+    shuffle: true, // 나열형 문제의 보기를 할 때마다 섞음
     intro: { line: '쿠키 25개 구웠어. 오늘 손님은 공평한 걸 좋아해. 똑같이 나누는 법, 그리고 남는 쿠키까지. Okay?', start: '쿠키 꺼내기' },
     rounds: ROUNDS,
     bonus: BONUS,

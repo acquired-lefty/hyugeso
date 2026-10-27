@@ -12,7 +12,7 @@ const FINAL = {
   episode: '12회차',
   title: '피날레: 잠긴 방 열기',
   host: 'ddal',
-  shuffle: true, // 8회차부터: 나열형 문제의 보기를 할 때마다 섞음
+  shuffle: true, // 나열형 문제의 보기를 할 때마다 섞음
   intro: { line: '문 너머에 마지막 주문서가 있습니다만. 시즌 내내 배운 걸 꺼낼 차례입니다만.', start: '마지막 주문서 펼치기' },
   rounds: [
     {

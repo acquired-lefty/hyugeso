@@ -305,7 +305,7 @@ function reviewAnswer(item, { onRight, onWrong, onEmpty, mix = false }) {
     onWrong(item.choices ? 'no' : v > item.answer ? 'more' : 'less');
   };
   if (item.choices) {
-    const btns = item.choices.map((c, i) => h('button', { class: 'choice-btn', onclick: () => judge(i) }, c));
+    const btns = item.choices.map((c, i) => h('button', { class: 'choice-btn', 'data-i': i, onclick: () => judge(i) }, c));
     el = h('div', { class: 'choice-list' }, ...(mix ? shuffled(btns) : btns));
     return { el, buttons: [], lock, judge };
   }
