@@ -80,7 +80,7 @@ export default {
   mount(root, ctx) { mountStage(root, this.stage, ctx); },   // finish({ attempts, hints, bonus })는 engine이 부름
 };
 ```
-- 공통 옵션: pick·sort 보기마다 그림(`items: [[이름, 정답 또는 칸, SVG]]`), choice 틀린 보기마다 다른 피드백(`wrongMsgs`), fill 위에 그림(`art`).
+- 공통 옵션: pick 보기 순서 섞기(`shuffle: true`, 8회차 라운드 2), pick·sort 보기마다 그림(`items: [[이름, 정답 또는 칸, SVG]]`), choice 틀린 보기마다 다른 피드백(`wrongMsgs`), fill 위에 그림(`art`).
 - 문제 형태(`step.kind`): boxes(상자 담기, `target`·`names`·`art`·`cards`로 돈 같은 다른 단위도 가능: 6회차) / sort(칸 나누기) / pick(모두 고르기, `art` 그림의 `[data-pick]` 요소도 누를 수 있음) / pairs(짝마다 하나 고르기, 칸 나누기의 짝 버전) / choice(3지선다) / deal(한 바퀴씩 나눠 담기) / div(몫·나머지, 숫자 버튼) / fill(빈칸 숫자, 숫자 버튼) / listen(소리 듣고 3지선다) / review(복습 문제 pool에서 하나, 6회차 중간 복습). 새 형태가 필요하면 `engine.js`의 `KINDS`와 `tests/e2e.mjs`의 `SOLVE`에 함께 추가한다.
 - 소리: `listen`의 `sounds: [{ label, src: 'assets/sounds/s1-wNN/파일.mp3' }]`. 파일을 넣을 때마다 `assets/sounds/SOURCES.md`에 출처·조건을 적는다.
 - 자동 검사: `tests/e2e.mjs`가 `stage` 설정의 정답으로 공개된 모든 회차를 세 폭에서 끝까지 풀어 본다. 로컬은 `python3 -m http.server 8000` 후 `node tests/e2e.mjs`.

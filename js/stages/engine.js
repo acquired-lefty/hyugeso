@@ -65,6 +65,13 @@ export function numberPad(fields) {
 }
 export const keypad = (unit) => numberPad([{ unit }]);
 
+// 보기 순서를 섞어 보여 줌 (s.shuffle: true). 정답 판정은 원래 순서 기준이라 그대로
+const shuffled = (arr) => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i -= 1) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+};
+
 const cookies = (n) => Array.from({ length: n }, () => h('span', { class: 'cookie', 'aria-hidden': 'true' }));
 
 export function mountStage(root, cfg, { finish, exit }) {
@@ -332,7 +339,7 @@ const KINDS = {
       fig?.querySelectorAll('[data-pick]').forEach((el) => el.classList.toggle('is-on', on[Number(el.dataset.pick)]));
     }
     fig?.querySelectorAll('[data-pick]').forEach((el) => el.addEventListener('click', () => { if (!btns[0].disabled) toggle(Number(el.dataset.pick)); }));
-    body.append(fig || '', h('p', { class: 'ask' }, s.ask), h('div', { class: `pick-grid ${s.art || s.items.some((it) => it[2]) ? 'pick-grid-6' : ''}` }, ...btns));
+    body.append(fig || '', h('p', { class: 'ask' }, s.ask), h('div', { class: `pick-grid ${s.art || s.items.some((it) => it[2]) ? 'pick-grid-6' : ''}` }, ...(s.shuffle ? shuffled(btns) : btns)));
     actions.replaceChildren(hintBtn, h('button', {
       class: 'btn primary',
       onclick: () => {

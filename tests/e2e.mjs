@@ -52,7 +52,8 @@ const SOLVE = {
     await clickText(p, '칸에 넣기');
   },
   async pick(p, s) {
-    for (let i = 0; i < s.items.length; i += 1) if (s.items[i][1]) await p.locator('.pick-btn').nth(i).click();
+    // 보기 순서가 섞일 수 있어(shuffle) 글자로 찾아 누름
+    for (const [name, ok] of s.items) if (ok) await p.locator('.pick-btn').filter({ hasText: new RegExp(`^\\s*${name.replace(/[()]/g, '\\$&')}\\s*$`) }).click();
     await clickText(p, '골랐어');
   },
   async choice(p, s) { await p.locator('.choice-btn').nth(s.answer).click(); },

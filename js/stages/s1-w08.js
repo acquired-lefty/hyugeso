@@ -40,6 +40,7 @@ const ROUNDS = [
     line: '사막에서 살아남기 좋은 특징을 모두 골라 줘.',
     steps: [{
       kind: 'pick',
+      shuffle: true, // 보기 순서를 할 때마다 섞음
       ask: '사막에서 살아남기 좋은 특징을 모두 골라 주는 거지.',
       items: [
         ['큰 귀로 몸의 열 내보내기', true], ['넓고 평평한 발', true], ['긴 속눈썹', true],
