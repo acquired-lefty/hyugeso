@@ -40,7 +40,6 @@ const ROUNDS = [
     line: '사막에서 살아남기 좋은 특징을 모두 골라 줘.',
     steps: [{
       kind: 'pick',
-      shuffle: true, // 보기 순서를 할 때마다 섞음
       ask: '사막에서 살아남기 좋은 특징을 모두 골라 주는 거지.',
       items: [
         ['큰 귀로 몸의 열 내보내기', true], ['넓고 평평한 발', true], ['긴 속눈썹', true],
@@ -117,6 +116,7 @@ export default {
     title: '옥상의 작은 손님',
     host: 'kkam',
     intro: { line: '옥상에 작은 손님이 온 거지. 놀라지 않게 조용히 들어와.', start: '옥상 정원 나가기' },
+    shuffle: true, // 8회차부터: 나열형 문제의 보기를 할 때마다 섞음
     rounds: ROUNDS,
     bonus: BONUS,
     result: {
