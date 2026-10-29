@@ -263,6 +263,13 @@ input {
 .pick-art { display: block; width: 100%; }
 .exp-figure .pizza { max-width: 150px; }
 
+/* 양팔저울 (9회차): 정답 뒤 우유 쪽으로 살짝 기움 */
+.balance-art .beam { transform-box: view-box; transform-origin: 120px 34px; transition: transform .9s ease-out; }
+.balance-art .pan-left, .balance-art .pan-right { transition: transform .9s ease-out; }
+.tilt-left .balance-art .beam { transform: rotate(-8deg); }
+.tilt-left .balance-art .pan-left { transform: translateY(12px); }
+.tilt-left .balance-art .pan-right { transform: translateY(-12px); }
+
 /* ---------- 결과 ---------- */
 .result h2 { color: var(--sodium); }
 .levelup {
@@ -456,5 +463,6 @@ textarea {
 @media (prefers-reduced-motion: reduce) {
   .flicker, .char-kkam .eyes, .scene.unlock-floor2 .floor2-dim, .scene.unlock-floor2 .stairs { animation: none; }
   .scene.unlock-floor2 .floor2-dim { opacity: 0; }
+  .balance-art .beam, .balance-art .pan-left, .balance-art .pan-right { transition: none; }
   .btn.primary:active, .box:active .box-art, .pad-key:active:not(:disabled) { transform: none; }
 }
