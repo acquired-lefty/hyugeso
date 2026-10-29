@@ -298,7 +298,7 @@ const KINDS = {
       }, b.name));
       return { btns, el: h('li', { class: `sort-item ${s.items[i][2] ? 'has-art' : ''}`, 'data-i': i },
         // 물건마다 그림을 붙일 수 있음: items: [[이름, 칸, SVG]] (8회차 동물)
-        s.items[i][2] ? h('span', { class: 'sort-art', html: s.items[i][2] }) : '', h('span', { class: 'sort-name' }, name), h('div', { class: 'state-group', role: 'group', 'aria-label': `${name} 칸 고르기` }, ...btns)) };
+        s.items[i][2] ? h('span', { class: 'sort-art', html: s.items[i][2] }) : '', h('span', { class: 'sort-name' }, name), h('div', { class: 'state-group', role: 'group', 'aria-label': `${name} 칸 고르기`, style: `grid-template-columns: repeat(${s.bins.length}, 1fr)` }, ...btns)) };
     });
     function refresh() {
       rows.forEach((row, i) => row.btns.forEach((b, j) => b.setAttribute('aria-pressed', String(picked[i] === s.bins[j].key))));
@@ -367,13 +367,16 @@ const KINDS = {
   // 고르기: 누르면 바로 확인, 정답이면 한 줄 설명
   choice(ctx) {
     const { r, s, body, actions, hintBtn, attempt, correct, wrong } = ctx;
+    // s.artOk: 정답을 맞히면 그림에 붙일 class (예: 9회차 양팔저울이 기우는 연출)
+    const fig = s.art ? h('div', { class: 'exp-figure', html: s.art }) : '';
     body.append(
-      s.art ? h('div', { class: 'exp-figure', html: s.art }) : '',
+      fig,
       h('p', { class: 'ask' }, s.ask),
       h('div', { class: 'choice-list' }, ...mixIf(ctx.mix, s.choices.map((c, i) => h('button', {
         class: 'choice-btn', 'data-i': i,
         onclick: () => {
           attempt();
+          if (i === s.answer && s.artOk && fig) fig.classList.add(s.artOk);
           if (i === s.answer) correct(s.explain || '');
           else wrong(s.wrongMsgs?.[i] || s.wrongMsg || VOICE[r.who].notIt);
         },

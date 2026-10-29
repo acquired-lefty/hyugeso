@@ -16,7 +16,7 @@ export const SEASON1 = [
   { id: 's1-w06', week: 6, title: '중간 미션: 매점 메뉴판', subject: '수학: 돈 계산', opensAt: '2026-10-22', open: true, load: () => import('./s1-w06.js') },
   { id: 's1-w07', week: 7, title: '2층 피자 가게의 분수', subject: '수학: 분수', opensAt: '2026-10-26', open: true, load: () => import('./s1-w07.js'), place: 'floor2', room: '피자 가게' },
   { id: 's1-w08', week: 8, title: '옥상의 작은 손님', subject: '과학: 동물의 생활', opensAt: '2026-10-29', open: true, load: () => import('./s1-w08.js'), place: 'rooftop', room: '사막 화단' },
-  { id: 's1-w09', week: 9, title: '계량컵이 거짓말을?', subject: '수학: 들이와 무게', opensAt: '2026-11-02', open: false },
+  { id: 's1-w09', week: 9, title: '2층 식재료 창고의 저울', subject: '수학: 들이와 무게', opensAt: '2026-11-02', open: true, load: () => import('./s1-w09.js'), place: 'floor2', room: '식재료 창고' },
   { id: 's1-w10', week: 10, title: '초코 케이크 흙 실험', subject: '과학: 지표의 변화', opensAt: '2026-11-05', open: false },
   { id: 's1-w11', week: 11, title: '손님 주문 그래프', subject: '수학: 자료의 정리', opensAt: '2026-11-09', open: false },
   { id: 's1-w12', week: 12, title: '피날레: 잠긴 방 열기', subject: '통합: 시즌 복습', opensAt: '2026-11-12', open: false, load: () => import('./s1-w12.js') },
