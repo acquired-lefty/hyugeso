@@ -172,7 +172,7 @@ for (const meta of SEASON1.filter((s) => s.load)) checkRules(meta, (await meta.l
 
 for (const [name, w] of WIDTHS) {
   const full = name === 'mobile';
-  const p = await (await browser.newContext({ viewport: { width: w, height: 900 } })).newPage();
+  const p = await (await browser.newContext({ viewport: { width: w, height: 900 }, serviceWorkers: 'block' })).newPage();
   p.setDefaultTimeout(10000);
   p.on('pageerror', (e) => fail(`${name}: 화면 오류 ${e.message}`));
   await p.route('**/js/config.js', (r) => r.fulfill({ contentType: 'text/javascript', body: DEMO_CONFIG }));
