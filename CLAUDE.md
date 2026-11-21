@@ -29,6 +29,7 @@
 ## 파일 구조
 ```
 index.html            진입점
+sw.js                 서비스 워커: 같은 사이트 파일을 받을 때마다 새 버전 확인 (Pages 10분 캐시 때문에 고친 회차가 늦게 보이는 문제 방지)
 css/style.css         디자인 토큰과 전체 스타일
 js/config.js          Supabase 주소·키, XP_PER_LEVEL
 js/store.js           데이터 계층 (live / demo)
