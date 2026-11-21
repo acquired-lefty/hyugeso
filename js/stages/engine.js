@@ -4,7 +4,7 @@
 // cfg = {
 //   episode: '3회차', title: '쿠키 공평하게 나누기',
 //   host: 'tipo',                      // 그 회차 진행 캐릭터(hostFor): 들어가기·힌트·결과
-//   intro: { line, start },            // 첫 대사, 시작 버튼 글자
+//   intro: { line, start, art? },      // 첫 대사, 시작 버튼 글자, 장면 그림(선택)
 //   rounds: [{ who, label?, line, steps: [step, …] }],   // 본 라운드 3개
 //   bonus: { offer, who, line, steps },                    // 숨은 주문 (선택)
 //   result: { clear, findClue },       // 결과 화면 대사 (선택, 없으면 characters.js LINES)
@@ -93,6 +93,8 @@ export function mountStage(root, cfg, { finish, exit }) {
       header(cfg.episode),
       h('h2', {}, cfg.title),
       bubble(host, cfg.intro.line),
+      // intro.art: 들어가기 장면 그림 (선택, 10회차 옥상 화단)
+      cfg.intro.art ? h('div', { class: 'exp-figure intro-art', html: cfg.intro.art }) : '',
       h('div', { class: 'actions' }, h('button', { class: 'btn primary', onclick: () => round(0) }, cfg.intro.start))));
   }
 

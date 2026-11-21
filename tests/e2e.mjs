@@ -125,12 +125,13 @@ function checkRules(meta, mod, answer) {
 }
 
 // 오답 하나를 내 보고 피드백이 나오는지 확인 (고르기 형태만)
-async function tryWrong(p, s, tag) {
+async function tryWrong(p, s, tag, hinted = false) {
   if (s.kind !== 'choice' && s.kind !== 'listen') return;
   const wrongIdx = s.choices.findIndex((_, i) => i !== s.answer);
   await nth(p, '.choice-btn', wrongIdx).click();
   const said = await p.locator('.talk p').innerText();
-  if (!/힌트/.test(said)) fail(`${tag}: 고르기 오답 뒤 힌트 권유가 없음 (${said})`);
+  // 이미 힌트를 본 문제에서는 힌트를 다시 권하지 않는 것이 맞음
+  if (!hinted && !/힌트/.test(said)) fail(`${tag}: 고르기 오답 뒤 힌트 권유가 없음 (${said})`);
 }
 
 async function playRound(p, r, tag, { useHint, wrong }) {
@@ -138,13 +139,15 @@ async function playRound(p, r, tag, { useHint, wrong }) {
     const s = r.steps[i];
     if (!SOLVE[s.kind]) { fail(`${tag}: 자동 풀이가 없는 문제 형태 ${s.kind}`); return; }
     // 첫 화면에 힌트 버튼이 없는 형태(예: 한 바퀴 돌리기)는 다음 라운드에서 힌트를 씀
+    let hintedHere = false;
     if (useHint.left && await p.locator('.stage button:text-is("힌트 보기")').count()) {
       useHint.left = false;
+      hintedHere = true;
       await clickText(p, '힌트 보기');
       const said = await p.locator('.talk p').innerText();
       if (said !== s.hints[0]) fail(`${tag}: 힌트 문구가 다름 (${said})`);
     }
-    if (wrong) await tryWrong(p, s, tag);
+    if (wrong) await tryWrong(p, s, tag, hintedHere);
     await SOLVE[s.kind](p, s);
     const next = i === r.steps.length - 1 ? '다음으로' : '다음 문제';
     await p.locator(`.stage button:text-is("${next}")`).click();
