@@ -7,35 +7,6 @@
 //   https://open.maricopa.edu (Physical Geology 6.1) , https://www.nps.gov/grca , https://www.fao.org (FAO 사무총장 연설)
 import { mountStage } from './engine.js';
 
-// 들어가기 장면: 비 그친 밤 옥상 흙 화단 (갈라진 바위와 틈의 풀, 홈통, 물길, 각설탕 7개 든 통, 작은 돌, 반쯤 묻힌 놋쇠 열쇠)
-const SCENE = `<svg viewBox="0 0 360 190" class="exp-art" role="img" aria-label="비가 그친 밤, 옥상 흙 화단과 갈라진 바위, 빗물 홈통, 물길, 각설탕 통, 작은 돌, 반쯤 묻힌 열쇠">
-  <rect width="360" height="190" rx="10" fill="#1C2747"/>
-  <circle cx="40" cy="26" r="1.5" fill="#FBF6EC"/><circle cx="120" cy="16" r="1.2" fill="#FBF6EC"/><circle cx="210" cy="30" r="1.5" fill="#FBF6EC"/>
-  <rect x="268" y="40" width="80" height="70" fill="#27345C" stroke="#0F1630" stroke-width="2"/>
-  <path d="M262 40h92" stroke="#33427A" stroke-width="6"/>
-  <path d="M300 43v60q0 10-10 12h-14" fill="none" stroke="#8A93B8" stroke-width="5" stroke-linecap="round"/>
-  <path d="M272 118q-2 8 1 14" stroke="#8ED8C9" stroke-width="2" stroke-dasharray="3 3"/>
-  <path d="M10 120q170-14 340 0v62H10z" fill="#6E4A2E" stroke="#3A2A22" stroke-width="2"/>
-  <path d="M270 132q-60 10-110 20t-140 18" fill="none" stroke="#3E2A1A" stroke-width="9" stroke-linecap="round"/>
-  <path d="M270 132q-60 10-110 20t-140 18" fill="none" stroke="#5C9DB8" stroke-width="3" stroke-linecap="round" opacity=".8"/>
-  <g transform="translate(150 146) rotate(-12)">
-    <rect x="-7" y="-3" width="14" height="6" rx="3" fill="#C9A24A" stroke="#7A5A2E" stroke-width="1.2"/>
-    <rect x="-1" y="-1" width="13" height="2" fill="#C9A24A"/><rect x="8" y="1" width="2" height="3" fill="#C9A24A"/>
-    <circle cx="-11" cy="0" r="5" fill="none" stroke="#C9A24A" stroke-width="1.6"/>
-    <circle cx="-11" cy="0" r="2" fill="#FBF6EC" stroke="#7A5A2E" stroke-width=".8"/>
-  </g>
-  <path d="M30 120l14-34 34-6 22 16 6 24z" fill="#8A8F99" stroke="#3A2A22" stroke-width="2"/>
-  <path d="M62 82l-4 16 6 10-3 12" fill="none" stroke="#3A2A22" stroke-width="2.5"/>
-  <path d="M60 98l-6-8M61 98l5-9M60 98l1-10" stroke="#5FA35A" stroke-width="2" stroke-linecap="round"/>
-  <rect x="196" y="94" width="40" height="34" rx="4" fill="#DDEEF5" fill-opacity=".55" stroke="#8A93B8" stroke-width="2"/>
-  <rect x="194" y="88" width="44" height="7" rx="2" fill="#8A93B8"/>
-  <g fill="#FBF6EC" stroke="#C9A574" stroke-width=".8">
-    <rect x="200" y="117" width="8" height="8"/><rect x="209" y="117" width="8" height="8"/><rect x="218" y="117" width="8" height="8"/><rect x="227" y="117" width="7" height="8"/>
-    <rect x="204" y="108" width="8" height="8"/><rect x="213" y="108" width="8" height="8"/><rect x="222" y="108" width="8" height="8"/>
-  </g>
-  <ellipse cx="248" cy="126" rx="7" ry="5" fill="#9AA0A8" stroke="#3A2A22" stroke-width="1.5"/>
-</svg>`;
-
 // 라운드 1: 틈에 물이 찬 바위
 const CRACK = `<svg viewBox="0 0 200 130" class="exp-art" role="img" aria-label="갈라진 틈에 물이 차 있는 바위">
   <path d="M20 118l18-70 40-22 50 8 40 30 12 54z" fill="#9AA0A8" stroke="#3A2A22" stroke-width="3"/>
@@ -166,7 +137,6 @@ export default {
     intro: {
       line: '옥상 화단에 갈라진 바위가 있어. 단단한 바위가 어떻게 부서졌는지 같이 알아보자. Okay?',
       start: '옥상으로 나가기',
-      art: SCENE,
     },
     rounds: ROUNDS,
     bonus: BONUS,
