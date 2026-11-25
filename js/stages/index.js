@@ -18,7 +18,7 @@ export const SEASON1 = [
   { id: 's1-w08', week: 8, title: '옥상의 작은 손님', subject: '과학: 동물의 생활', opensAt: '2026-10-29', open: true, load: () => import('./s1-w08.js'), place: 'rooftop', room: '사막 화단' },
   { id: 's1-w09', week: 9, title: '2층 식재료 창고의 저울', subject: '수학: 들이와 무게', opensAt: '2026-11-02', open: true, load: () => import('./s1-w09.js'), place: 'floor2', room: '식재료 창고' },
   { id: 's1-w10', week: 10, title: '옥상 화단의 갈라진 바위', subject: '과학: 땅의 변화', opensAt: '2026-11-05', open: true, load: () => import('./s1-w10.js'), place: 'rooftop', room: '흙 화단' },
-  { id: 's1-w11', week: 11, title: '손님 주문 그래프', subject: '수학: 자료의 정리', opensAt: '2026-11-09', open: false },
+  { id: 's1-w11', week: 11, title: '옛 푸드코트의 판매 장부', subject: '수학: 자료와 가능성', opensAt: '2026-11-09', open: true, load: () => import('./s1-w11.js'), place: 'floor2', room: '옛 사무실' },
   { id: 's1-w12', week: 12, title: '피날레: 잠긴 방 열기', subject: '통합: 시즌 복습', opensAt: '2026-11-12', open: false, load: () => import('./s1-w12.js') },
 ];
 

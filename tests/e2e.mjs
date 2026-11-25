@@ -76,6 +76,7 @@ const SOLVE = {
     await enterNumbers(p, [Math.floor(s.n / s.d), s.n % s.d]);
     await clickText(p, '확인');
   },
+  async table(p, s) { await enterNumbers(p, s.cols.map((c) => c.answer)); await clickText(p, '확인'); },
   async fill(p, s) { await enterNumbers(p, [s.answer]); await clickText(p, '확인'); },
   async review(p, s) {
     const q = await p.locator('.stage .ask').innerText();
@@ -111,7 +112,8 @@ function checkRules(meta, mod, answer) {
   for (const item of mod.review || []) {
     if (item.choices && item.choices.length !== 3) fail(`${tag}: 복습 보기 ${item.choices.length}개: ${item.q}`);
     if (science && !item.choices) fail(`${tag}: 과학 회차 복습은 3지선다여야 함: ${item.q}`);
-    if (meta.subject.startsWith('수학') && item.choices) fail(`${tag}: 수학 회차 복습은 숫자 답이어야 함: ${item.q}`);
+    // reviewChoices: 대표님이 수학 회차 복습을 3지선다로 정한 경우(11회차)
+    if (meta.subject.startsWith('수학') && item.choices && !mod.reviewChoices) fail(`${tag}: 수학 회차 복습은 숫자 답이어야 함: ${item.q}`);
   }
   if (meta.open && !((mod.review || []).length >= 3 && mod.review.length <= 4)) fail(`${tag}: 복습 문제는 3~4개 (지금 ${(mod.review || []).length}개)`);
   if (answer) {

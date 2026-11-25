@@ -282,6 +282,17 @@ input {
 @keyframes groove-deep { from { transform: scaleY(.4); } to { transform: scaleY(1.3); } }
 @keyframes deposit-up { from { transform: scaleY(.15); } to { transform: scaleY(1); } }
 
+/* 11회차: 장부 목록, 正 획 그리기, 보기 그림, 결과 화면 구석 동전 */
+.ledger { list-style: decimal inside; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 10px; margin: 6px 0 10px; padding: 10px 12px; background: #F3E6C8; border: 2px solid #8A6A33; border-radius: 6px; font-weight: 700; }
+.tally-art .stroke { stroke: #1A1F33; stroke-width: 5; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: stroke-in .35s ease-out forwards; }
+@keyframes stroke-in { to { stroke-dashoffset: 0; } }
+.choice-btn .choice-art { display: inline-block; vertical-align: middle; margin-right: 10px; }
+.choice-btn .choice-art svg { width: 48px; height: 36px; display: block; }
+.result-egg { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.egg-btn { width: 44px; height: 44px; padding: 4px; border: 0; background: transparent; cursor: pointer; opacity: .85; }
+.egg-btn svg { width: 100%; height: 100%; display: block; }
+.egg-line:empty { display: none; }
+
 /* ---------- 결과 ---------- */
 .result h2 { color: var(--sodium); }
 .levelup {
@@ -477,6 +488,7 @@ textarea {
   .scene.unlock-floor2 .floor2-dim { opacity: 0; }
   .balance-art .beam, .balance-art .pan-left, .balance-art .pan-right { transition: none; }
   .carve .stream-art .flow, .carve .stream-art .groove, .carve .stream-art .deposit { animation: none; }
+  .tally-art .stroke { animation: none; stroke-dashoffset: 0; }
   .carve .stream-art .flow { opacity: 1; }
   .carve .stream-art .groove { transform: scaleY(1.3); }
   .carve .stream-art .deposit { transform: none; }
