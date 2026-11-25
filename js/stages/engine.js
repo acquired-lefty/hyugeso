@@ -13,6 +13,7 @@
 // step.kind: boxes(상자 담기) / sort(칸 나누기) / pick(모두 고르기) / choice(고르기)
 //            deal(한 바퀴씩 나눠 담기) / div(몫·나머지) / fill(빈칸 숫자) / listen(소리 듣고 고르기)
 //            pairs(짝마다 더 높은/큰 쪽 누르기: 칸 나누기의 짝 버전, 4회차)
+//            table(자료 목록을 보고 표 빈칸을 숫자 버튼으로, 11회차)
 //            review(복습 문제 pool에서 하나: 숫자 답은 숫자 버튼, 보기가 있으면 3지선다. 6회차 중간 복습)
 // 고르기(choice·listen)의 보기는 항상 3개. 숫자 답은 화면 숫자 버튼(0~9)으로만 입력
 // 모든 step에 hints: ['개념', '구체적으로 쪼개기'] (2단계)
@@ -382,7 +383,8 @@ const KINDS = {
           if (i === s.answer) correct(s.explain || '');
           else wrong(s.wrongMsgs?.[i] || s.wrongMsg || VOICE[r.who].notIt);
         },
-      }, c)))));
+      // s.choiceArt: 보기마다 그림 (11회차 다섯 묶음 표시)
+      }, s.choiceArt?.[i] ? h('span', { class: 'choice-art', html: s.choiceArt[i] }) : '', c)))));
     actions.replaceChildren(hintBtn);
   },
 
@@ -475,6 +477,30 @@ const KINDS = {
         attempt();
         if (v === item.answer) { correct(`${item.answer}${item.unit}. ${VOICE[r.who].right}`); return; }
         wrong(v > item.answer ? VOICE[r.who].tooMany : VOICE[r.who].tooFew);
+      },
+    }, '확인'));
+  },
+
+  // 표 빈칸 채우기: 자료 목록을 보고 항목별 수와 합계를 숫자 버튼으로 (11회차)
+  // s.rows: 자료 목록(순서 그대로 보여 줌), s.cols: [{ label, answer }], 틀리면 첫 번째로 틀린 칸의 방향만
+  table(ctx) {
+    const { r, s, body, actions, hintBtn, say, attempt, correct, wrong } = ctx;
+    const pad = numberPad(s.cols.map((c) => ({ label: c.label })));
+    body.append(
+      h('p', { class: 'ask' }, s.ask),
+      h('ol', { class: 'ledger' }, ...s.rows.map((row) => h('li', {}, row))),
+      h('p', { class: 'muted small pad-help' }, '칸을 누르고 숫자를 눌러요.'),
+      pad.el);
+    actions.replaceChildren(hintBtn, h('button', {
+      class: 'btn primary',
+      onclick: () => {
+        const vals = s.cols.map((_, i) => pad.get(i));
+        if (vals.some((v) => v == null)) { say(r.who, VOICE[r.who].typeFirst); return; }
+        attempt();
+        const k = s.cols.findIndex((c, i) => vals[i] !== c.answer);
+        if (k < 0) { correct(s.okText || ''); return; }
+        const c = s.cols[k];
+        wrong(`${c.label} 칸이 ${vals[k] > c.answer ? s.msgs.big : s.msgs.small} ${s.msgs.tail || ''}`.trim());
       },
     }, '확인'));
   },

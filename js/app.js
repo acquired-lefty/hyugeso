@@ -697,6 +697,15 @@ async function runStage(meta) {
   });
 }
 
+// 결과 화면 구석의 작은 그림 (다음 회차로 이어지는 떡밥). 누르면 한 줄 대사
+function resultEgg(who, egg) {
+  const line = h('div', { class: 'egg-line', role: 'status' });
+  return h('div', { class: 'result-egg' },
+    h('button', { class: 'egg-btn', type: 'button', 'aria-label': egg.label || '작은 그림', html: egg.art,
+      onclick: () => line.replaceChildren(bubble(who, egg.line)) }),
+    line);
+}
+
 async function completeStage(meta, mod, result) {
   // 첫 클리어 판단과 경험치 계산은 store(실제 모드는 서버 함수)가 함
   const res = await store.completeStage(profile, {
@@ -729,6 +738,7 @@ async function completeStage(meta, mod, result) {
         : bubble(who, lines.retry),
       teamHelped ? h('p', { class: 'small muted' }, '부엌 공동 목표가 한 칸 찼어요.') : null,
       bubble(who, lines.findClue),
+      lines.egg ? resultEgg(who, lines.egg) : '',
       h('div', { class: 'actions' },
         h('button', { class: 'btn ghost', onclick: () => guard(renderHub) }, '휴게소로'),
         h('button', { class: 'btn primary', onclick: () => guard(() => renderClue(meta, true)) }, '암호 입력'))));
