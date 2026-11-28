@@ -2,7 +2,7 @@ import { store, STATUS_MESSAGE } from './store.js';
 import { h, bubble, normalize, clueHash, josa } from './ui.js';
 import { sceneSvg } from './scene.js';
 import { levelProgress, XP_LABEL } from './xp.js';
-import { SEASON1, TEAM_GOAL_ID, CLUE_TOTAL, stageStatus, opensLabel, hostFor } from './stages/index.js';
+import { SEASON1, TEAM_GOAL_ID, CLUE_TOTAL, DOOR_MAP, stageStatus, opensLabel, hostFor } from './stages/index.js';
 import { LINES } from './characters.js';
 import { AVATAR_PARTS, avatarSvg, normalizeAvatar } from './avatar.js';
 import { youtubeId, embedUrl, watchUrl } from './video.js';
@@ -134,7 +134,7 @@ const DOOR_LINE = {
   bus: '버스는 아직 안 오는 거지. 시간표가 비어 있어.',
   floor2: '2층은 6회차 주문을 끝내면 불이 켜지는 거지.',
   rooftop: '옥상은 2층 계단으로 올라가는 거지. 6회차 주문을 끝내야 열리는 거지.',
-  basement: '…거긴 아직. 12회차까지 단서를 모아야 하는 거지.',
+  basement: '…거긴 아직. 12회차 번호 자물쇠를 풀어야 열리는 거지.',
 };
 
 async function renderHub() {
@@ -334,14 +334,37 @@ async function renderGallery() {
 }
 
 // ---------- 지하 (12회차 클리어 후) ----------
+// 지하: 옛 주인 관리실 (12회차 클리어로 열림). 벽 지도 7칸(DOOR_MAP), 초록 장부, 고리 하나짜리 열쇠걸이, 시즌1 단서 12개
+function officeSvg(clues) {
+  const slots = Array.from({ length: DOOR_MAP.total }, (_, i) => {
+    const id = DOOR_MAP.pieces[i];
+    const got = id && clues[id];
+    const x = 30 + (i % 4) * 34; const y = 26 + Math.floor(i / 4) * 30;
+    return `<rect x="${x}" y="${y}" width="30" height="26" rx="2" class="map-cell ${got ? 'is-got' : ''}"/>${got ? `<path d="M${x + 5} ${y + 18}q8-12 14-4t6-8" fill="none" stroke="#7A5A2E" stroke-width="2"/>` : ''}`;
+  }).join('');
+  return `<svg viewBox="0 0 320 170" class="office-art" role="img" aria-label="옛 주인 관리실: 벽 지도, 초록 장부, 고리가 하나 있는 열쇠걸이">
+    <rect width="320" height="170" fill="#2A2A3A"/><rect y="132" width="320" height="38" fill="#3A2A22"/>
+    <rect x="22" y="16" width="154" height="78" rx="4" fill="#E8D9B5" stroke="#8A6A33" stroke-width="3"/>${slots}
+    <rect x="196" y="22" width="56" height="40" rx="4" fill="#8A6A33" stroke="#5A3A22" stroke-width="2"/>
+    <path d="M224 34v10q0 6 5 6" fill="none" stroke="#C9A24A" stroke-width="3" stroke-linecap="round"/>
+    <rect x="186" y="118" width="120" height="16" fill="#6E4A2E"/>
+    <rect x="206" y="100" width="54" height="18" rx="2" fill="#3F7A4A" stroke="#1F4A2A" stroke-width="2"/><path d="M212 106h40" stroke="#C9E2CC" stroke-width="1.5"/>
+  </svg>`;
+}
+
 async function renderBasement() {
   const clues = await store.listClues();
+  const mapCount = DOOR_MAP.pieces.filter((id) => clues[id]).length;
   root.replaceChildren(
     statusBar(),
-    h('section', { class: 'panel' },
+    h('section', { class: 'panel basement' },
       pageHead('지하', renderHub),
-      h('h2', {}, '지하의 잠긴 방'),
-      bubble('ddal', '자물쇠 12개가 모두 열린 방입니다만. 시즌1을 끝까지 온 손님만 들어올 수 있습니다만.'),
+      h('h2', {}, '옛 주인 관리실'),
+      h('div', { class: 'exp-figure office-map', 'data-filled': mapCount, html: officeSvg(clues) }),
+      bubble('ddal', mapCount
+        ? `벽 지도가 ${DOOR_MAP.total}칸 중 ${mapCount}칸 채워졌습니다만. 나머지 칸은 다음 시즌에 채워집니다만.`
+        : '벽 지도는 아직 비어 있습니다만. 12회차 영상 끝부분을 보시면 첫 칸이 채워집니다만.'),
+      h('h3', {}, '시즌1 단서'),
       h('ol', { class: 'clue-grid' }, ...SEASON1.map((s) => h('li', { class: `clue-card ${clues[s.id] ? 'is-got' : ''}` },
         h('span', { class: 'clue-week' }, `${s.week}회`),
         h('strong', { class: 'clue-word' }, clues[s.id]?.word || (clues[s.id] ? '✓' : '?')))))));
@@ -472,6 +495,14 @@ async function renderClue(stageMeta, afterResult) {
         const fresh = statusBar(); bar.replaceWith(fresh); bar = fresh;
       } else {
         note.replaceChildren(bubble(who, L.clueHave));
+      }
+      // 문 지도 칸을 채우는 단서면 몇 칸째인지 알림 (12회차부터)
+      if (DOOR_MAP.pieces.includes(mod.clue.id)) {
+        const mine = await store.listClues();
+        const k = DOOR_MAP.pieces.filter((id) => mine[id]).length;
+        note.after(h('div', { class: 'unlock-banner map-banner', role: 'status' },
+          h('strong', {}, `지도 조각 ${k}/${DOOR_MAP.total}`),
+          h('span', { class: 'small' }, '지하 옛 주인 관리실의 벽 지도에 한 칸이 채워졌어요.')));
       }
       // 맞힌 뒤에는 확인 버튼을 다음 화면으로 가는 버튼으로 바꿈
       input.disabled = true;
@@ -720,6 +751,10 @@ async function completeStage(meta, mod, result) {
   // 중간 미션 첫 클리어: 위층 해금 (허브에서 불 켜짐·계단 연출)
   const unlockFloor2 = firstClear && meta.id === FLOOR2_STAGE;
   if (unlockFloor2) justUnlocked = 'floor2';
+  // seasonBoard: 시즌1 회차 클리어 표시 1~12 (12회차 결과 화면)
+  const done = lines.seasonBoard ? await store.allProgress() : null;
+  const board = done ? h('ol', { class: 'season-board', 'aria-label': '시즌1 클리어 표시' }, ...SEASON1.map((s) =>
+    h('li', { class: done[s.id]?.cleared ? 'is-done' : '' }, h('span', {}, `${s.week}`), done[s.id]?.cleared ? h('strong', { 'aria-label': '클리어' }, '✓') : ''))) : '';
 
   root.replaceChildren(
     statusBar(),
@@ -737,6 +772,7 @@ async function completeStage(meta, mod, result) {
           h('li', {}, h('span', {}, XP_LABEL[r.source]), h('strong', {}, `+${r.amount}`))))
         : bubble(who, lines.retry),
       teamHelped ? h('p', { class: 'small muted' }, '부엌 공동 목표가 한 칸 찼어요.') : null,
+      board,
       bubble(who, lines.findClue),
       lines.egg ? resultEgg(who, lines.egg) : '',
       h('div', { class: 'actions' },

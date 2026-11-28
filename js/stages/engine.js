@@ -85,6 +85,28 @@ export function mountStage(root, cfg, { finish, exit }) {
   const leave = () => { stopSound(); exit(); };
   const done = () => { stopSound(); finish({ ...stats }); };
 
+  // cfg.wheels: 번호 자물쇠 숫자 바퀴 (12회차). 본 라운드를 하나 끝낼 때마다 그 라운드 칸에 숫자가 채워지고, 다 차면 자물쇠가 열림
+  let filled = 0;
+  const wheelLock = () => {
+    if (!cfg.wheels) return '';
+    const cells = cfg.wheels.map((d, i) => h('span', { class: `wheel ${i < filled ? 'is-set' : ''}` }, i < filled ? String(d) : ''));
+    const el = h('div', { class: `wheel-door ${filled >= cfg.wheels.length ? 'is-open' : ''}` },
+      h('div', { class: 'wheel-lock', role: 'img' },
+        h('span', { class: 'wheel-shackle', 'aria-hidden': 'true' }),
+        h('div', { class: 'wheel-body' }, h('div', { class: 'wheel-window' }, ...cells))));
+    const label = () => el.firstChild.setAttribute('aria-label',
+      `번호 자물쇠 ${cfg.wheels.map((d, i) => (i < filled ? d : '빈칸')).join(', ')}${filled >= cfg.wheels.length ? ', 열림' : ''}`);
+    label();
+    el.fill = (k) => {
+      filled = Math.max(filled, k + 1);
+      cells[k].textContent = String(cfg.wheels[k]);
+      cells[k].classList.add('is-set', 'is-new');
+      if (filled >= cfg.wheels.length) el.classList.add('is-open');
+      label();
+    };
+    return el;
+  };
+
   const header = (label) => h('header', { class: 'stage-head' },
     h('button', { class: 'link', onclick: leave }, '휴게소로'),
     h('span', { class: 'stage-step' }, label));
@@ -93,6 +115,7 @@ export function mountStage(root, cfg, { finish, exit }) {
     root.replaceChildren(h('section', { class: 'stage' },
       header(cfg.episode),
       h('h2', {}, cfg.title),
+      wheelLock(),
       bubble(host, cfg.intro.line),
       // intro.art: 들어가기 장면 그림 (선택, 10회차 옥상 화단)
       cfg.intro.art ? h('div', { class: 'exp-figure intro-art', html: cfg.intro.art }) : '',
@@ -106,7 +129,8 @@ export function mountStage(root, cfg, { finish, exit }) {
     const progress = h('p', { class: 'muted small step-progress' });
     const body = h('div', { class: 'round-body' });
     const actions = h('div', { class: 'actions' });
-    root.replaceChildren(h('section', { class: 'stage' }, header(label), talk, progress, body, actions));
+    const lock = isBonus ? '' : wheelLock();
+    root.replaceChildren(h('section', { class: 'stage' }, header(label), lock, talk, progress, body, actions));
 
     function step(i) {
       stopSound();
@@ -140,6 +164,8 @@ export function mountStage(root, cfg, { finish, exit }) {
           body.querySelectorAll('button:not(.sound-btn)').forEach((b) => { b.disabled = true; });
           hintBtn.disabled = true;
           const last = i === r.steps.length - 1;
+          const k = cfg.rounds.indexOf(r);
+          if (last && lock && k >= 0 && k < cfg.wheels.length) lock.fill(k);
           actions.replaceChildren(h('button', { class: 'btn primary', onclick: () => step(i + 1) }, last ? '다음으로' : '다음 문제'));
         },
         wrong(msg) {

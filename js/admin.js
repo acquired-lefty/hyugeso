@@ -4,7 +4,7 @@
 import { store } from './store.js';
 import { h, clueHash } from './ui.js';
 import { XP_LABEL } from './xp.js';
-import { SEASON1, opensDate } from './stages/index.js';
+import { SEASON1, opensDate, DOOR_MAP } from './stages/index.js';
 import { avatarSvg, normalizeAvatar } from './avatar.js';
 import { youtubeId } from './video.js';
 
@@ -247,6 +247,17 @@ async function renderChild(profile, kid) {
     h('span', { class: 'small muted' }, `${day(c.collected_at)} 입력 (영상 시청 확인)`),
   ]);
 
+  // 문 지도 수집: 옛 주인 관리실 벽 지도 7칸 (DOOR_MAP.pieces 순서, 시즌2부터 칸이 늘어남)
+  const got = new Set(detail.clues.map((c) => c.clue_id));
+  const mapCount = DOOR_MAP.pieces.filter((id) => got.has(id)).length;
+  const doorMap = h('div', {},
+    h('ol', { class: 'map-slots', 'aria-label': `문 지도 ${mapCount}/${DOOR_MAP.total}` },
+      ...Array.from({ length: DOOR_MAP.total }, (_, i) => {
+        const id = DOOR_MAP.pieces[i];
+        return h('li', { class: `map-slot ${id && got.has(id) ? 'is-got' : ''}` }, h('span', { class: 'small' }, id ? `${STAGE[id]?.week ?? ''}회` : '?'));
+      })),
+    h('p', { class: 'small muted' }, `${mapCount}/${DOOR_MAP.total}칸 · 칸마다 그 회차 영상 단서를 입력하면 채워져요.`));
+
   const now = Date.now();
   const reviews = list(detail.reviews, '예약된 복습이 없어요.', (r) => {
     let state = '대기';
@@ -307,6 +318,7 @@ async function renderChild(profile, kid) {
       h('div', { class: 'admin-col' },
         section('회차별 기록', stages),
         section('영상 단서', clues),
+        section(`문 지도 수집 ${mapCount}/${DOOR_MAP.total}`, doorMap),
         section('복습 퀴즈', reviews),
         section('최근 XP (20개)', xp))));
 }

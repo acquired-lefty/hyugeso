@@ -4,7 +4,7 @@
 // 실행: python3 -m http.server 8000 & node tests/e2e.mjs   (BASE 환경변수로 주소 변경)
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { SEASON1, hostFor } from '../js/stages/index.js';
+import { SEASON1, DOOR_MAP, hostFor } from '../js/stages/index.js';
 import { boxTarget } from '../js/stages/engine.js';
 
 // 영상 암호 (화면 코드에는 지문만 있음)
@@ -136,7 +136,7 @@ async function tryWrong(p, s, tag, hinted = false) {
   if (!hinted && !/힌트/.test(said)) fail(`${tag}: 고르기 오답 뒤 힌트 권유가 없음 (${said})`);
 }
 
-async function playRound(p, r, tag, { useHint, wrong }) {
+async function playRound(p, r, tag, { useHint, wrong, afterLast }) {
   for (let i = 0; i < r.steps.length; i += 1) {
     const s = r.steps[i];
     if (!SOLVE[s.kind]) { fail(`${tag}: 자동 풀이가 없는 문제 형태 ${s.kind}`); return; }
@@ -151,6 +151,7 @@ async function playRound(p, r, tag, { useHint, wrong }) {
     }
     if (wrong) await tryWrong(p, s, tag, hintedHere);
     await SOLVE[s.kind](p, s);
+    if (afterLast && i === r.steps.length - 1) await afterLast();
     const next = i === r.steps.length - 1 ? '다음으로' : '다음 문제';
     await p.locator(`.stage button:text-is("${next}")`).click();
   }
@@ -205,7 +206,15 @@ for (const [name, w] of WIDTHS) {
       await clickText(p, mod.stage.intro.start);
       const hint = { left: full }; // 휴대폰 폭에서는 힌트를 한 번 써 보고 '힌트 없이' 경험치가 빠지는지 확인
       for (const [i, r] of mod.stage.rounds.entries()) {
-        await playRound(p, r, `${tag}/r${i + 1}`, { useHint: hint, wrong: full });
+        // 12회차 번호 자물쇠: 라운드를 끝낼 때마다 숫자 바퀴가 한 칸씩 채워지고, 다 차면 열림
+        const wheels = mod.stage.wheels;
+        const afterLast = wheels && (async () => {
+          const shown = (await p.locator('.wheel.is-set').allInnerTexts()).join('');
+          if (shown !== wheels.slice(0, i + 1).join('')) fail(`${tag}/r${i + 1}: 숫자 바퀴 ${shown}`);
+          const isOpen = await p.locator('.wheel-door.is-open').count();
+          if (!!isOpen !== (i === wheels.length - 1)) fail(`${tag}/r${i + 1}: 자물쇠 열림 상태가 다름`);
+        });
+        await playRound(p, r, `${tag}/r${i + 1}`, { useHint: hint, wrong: full, afterLast });
         await checkOverflow(p, w, `${tag}/r${i + 1}`);
       }
       if (mod.stage.bonus) {
@@ -214,6 +223,12 @@ for (const [name, w] of WIDTHS) {
       }
       await p.waitForSelector('.result');
       if (!(await p.locator(`.result .bubble-${hostFor(meta.week)}`).count())) fail(`${tag}: 결과 화면 대사가 진행 캐릭터가 아님`);
+      if (mod.stage.result?.seasonBoard) {
+        const n = await p.locator('.season-board li.is-done').count();
+        if (n !== SEASON1.filter((s) => s.open && s.load).length) fail(`${tag}: 시즌 클리어 표시 ${n}칸`);
+        await p.click('.egg-btn');
+        if (!(await p.locator('.egg-line p').innerText()).includes(mod.stage.result.egg.line)) fail(`${tag}: 떡밥 대사가 없음`);
+      }
       if (SHOTS) await p.screenshot({ path: `${SHOTS}/${name}-${meta.id}-result.png`, fullPage: true });
       await p.click('.result >> text=암호 입력');
       await p.fill('#clue', '틀린 암호');
@@ -225,6 +240,11 @@ for (const [name, w] of WIDTHS) {
       if (!/단서 카드 획득/.test(said)) fail(`${tag}: 암호 입력 실패 (${said})`);
       if (!(await p.locator(`.talk .bubble-${hostFor(meta.week)}`).count())) fail(`${tag}: 암호 화면 대사가 진행 캐릭터가 아님`);
       await checkOverflow(p, w, `${tag}/clue`);
+      // 문 지도 칸을 채우는 단서: 맞힌 뒤에만 '○/7' 안내
+      if (DOOR_MAP.pieces.includes(meta.id)) {
+        const banner = await p.locator('.map-banner').innerText();
+        if (!banner.includes(`${DOOR_MAP.pieces.indexOf(meta.id) + 1}/${DOOR_MAP.total}`)) fail(`${tag}: 지도 안내 ${banner}`);
+      }
 
       const db = await p.evaluate(() => JSON.parse(localStorage.getItem('hyugeso-demo-v1')));
       const log = db.xpLog.filter((x) => x.stage_id === meta.id).map((x) => x.source).sort().join(',');
@@ -238,6 +258,17 @@ for (const [name, w] of WIDTHS) {
         if (!(await p.locator('.scene.unlock-floor2 .stairs').count())) fail(`${tag}: 위층 해금 연출이 없음`);
         if (!/위층/.test(await p.locator('.scene-tip p').innerText())) fail(`${tag}: 위층 해금 대사가 없음`);
       }
+      // 12회차 첫 클리어 뒤 지하(옛 주인 관리실): 벽 지도 칸이 채워짐
+      if (meta.id === 's1-w12') {
+        await p.click('[data-door="basement"]');
+        await p.waitForSelector('.office-map');
+        const got = await p.locator('.office-map .map-cell.is-got').count();
+        if (got !== 1) fail(`${tag}: 관리실 벽 지도 ${got}칸`);
+        if (SHOTS) await p.screenshot({ path: `${SHOTS}/${name}-basement.png`, fullPage: true });
+        await checkOverflow(p, w, `${tag}/basement`);
+        await p.click('.basement .stage-head button');
+        await p.waitForSelector('.scene');
+      }
       await p.click('.strip-link');
       const card = p.locator('.clue-card').nth(SEASON1.indexOf(meta));
       if ((await card.locator('.clue-word').innerText()) !== answer.replace(/\s+/g, '')) fail(`${tag}: 단서 도감에 암호가 안 보임`);
@@ -245,7 +276,7 @@ for (const [name, w] of WIDTHS) {
       await p.waitForSelector('.scene');
       console.log(`ok  ${tag}`);
     } catch (err) {
-      fail(`${tag}: ${err.message.split('\n')[0]}`);
+      fail(`${tag}: ${err.message.split('\n').slice(0, 4).join(' ')}`);
       if (SHOTS) await p.screenshot({ path: `${SHOTS}/${name}-${meta.id}-fail.png`, fullPage: true });
       await p.goto(BASE); await p.waitForSelector('.scene');
     }
@@ -262,25 +293,12 @@ async function extraChecks(p, w) {
     const tag = `draft/${meta.id}`;
     try {
       const mod = (await meta.load()).default;
-      // 12회차 자물쇠는 모든 단서가 있어야 열림 → 체험 기록에 단서를 채워 둠
-      await p.evaluate((ids) => {
-        const db = JSON.parse(localStorage.getItem('hyugeso-demo-v1'));
-        for (const id of ids) if (!db.clues[id]) db.clues[id] = { at: new Date().toISOString(), word: `단서${id.slice(-2)}` };
-        localStorage.setItem('hyugeso-demo-v1', JSON.stringify(db));
-      }, mod.id === 's1-w12' ? SEASON1.map((s) => s.id) : []);
       await p.evaluate(async (id) => {
         const m = (await import(`./js/stages/${id}.js`)).default;
         const app = document.getElementById('app');
         app.replaceChildren(); window.__done = null;
         m.mount(app, { finish: (r) => { window.__done = r; }, exit: () => {} });
       }, meta.id);
-      if (mod.id === 's1-w12') {
-        await p.waitForSelector('.locks');
-        const open = await p.locator('.lock.is-open').count();
-        if (open !== SEASON1.length) fail(`${tag}: 열린 자물쇠 ${open}개`);
-        await checkOverflow(p, w, `${tag}/locks`);
-        await clickText(p, '지하 문 열기');
-      }
       await clickText(p, mod.stage.intro.start);
       for (const [i, r] of mod.stage.rounds.entries()) {
         await playRound(p, r, `${tag}/r${i + 1}`, { useHint: {}, wrong: true });

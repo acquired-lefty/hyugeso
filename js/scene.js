@@ -76,7 +76,8 @@ export function sceneSvg(open, { deco = false, unlock = '' } = {}) {
 
   ${door('basement', '지하로 가는 문', `
     <rect x="222" y="252" width="34" height="14" fill="#0F1630" stroke="#8A93B8" stroke-width="2"/>
-    <text x="239" y="245" text-anchor="middle" class="door-label small">지하</text>`)}
+    <text x="239" y="245" text-anchor="middle" class="door-label small">지하</text>
+    <rect x="214" y="232" width="50" height="38" fill="transparent"/>`)}
 
   ${deco ? `
     <g class="deco" aria-hidden="true">

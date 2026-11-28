@@ -6,6 +6,8 @@
 // place: 'floor2'면 2층(옛 푸드코트), 'rooftop'이면 2층에서 이어지는 옥상 정원의 방에서 시작 (6회차 클리어로 열림), room: 방 이름
 export const TEAM_GOAL_ID = 's1-kitchen';
 export const CLUE_TOTAL = 12;
+// 옛 주인 관리실 벽의 '문 지도' 7칸. pieces: 칸을 채우는 단서(회차) ID를 순서대로. 시즌2부터 회차 ID를 뒤에 더한다.
+export const DOOR_MAP = { total: 7, pieces: ['s1-w12'] };
 
 export const SEASON1 = [
   { id: 's1-w01', week: 1, title: '휴게소 첫날, 레시피 3배로!', subject: '수학: 곱셈', open: true, load: () => import('./s1-w01.js') },
@@ -19,7 +21,7 @@ export const SEASON1 = [
   { id: 's1-w09', week: 9, title: '2층 식재료 창고의 저울', subject: '수학: 들이와 무게', opensAt: '2026-11-02', open: true, load: () => import('./s1-w09.js'), place: 'floor2', room: '식재료 창고' },
   { id: 's1-w10', week: 10, title: '옥상 화단의 갈라진 바위', subject: '과학: 땅의 변화', opensAt: '2026-11-05', open: true, load: () => import('./s1-w10.js'), place: 'rooftop', room: '흙 화단' },
   { id: 's1-w11', week: 11, title: '옛 푸드코트의 판매 장부', subject: '수학: 자료와 가능성', opensAt: '2026-11-09', open: true, load: () => import('./s1-w11.js'), place: 'floor2', room: '옛 사무실' },
-  { id: 's1-w12', week: 12, title: '피날레: 잠긴 방 열기', subject: '통합: 시즌 복습', opensAt: '2026-11-12', open: false, load: () => import('./s1-w12.js') },
+  { id: 's1-w12', week: 12, title: '지하 방의 번호 자물쇠', subject: '통합: 시즌 복습', opensAt: '2026-11-12', open: true, load: () => import('./s1-w12.js') },
 ];
 
 // 진행 캐릭터: 2회마다 교대 (1~2회 규리사 → 3~4회 티포 → 5~6회 자판남 → 반복). 영상 내레이터와 같음
